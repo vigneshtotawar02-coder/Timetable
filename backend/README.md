@@ -130,7 +130,7 @@ backend/
    npm start
    ```
 
-The server will start on `http://localhost:5000`
+The server will start on `https://timetable-vmbl.onrender.com`
 
 ## 📊 Database Schema
 
@@ -264,7 +264,7 @@ Test the API using tools like:
 
 Example request:
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST https://timetable-vmbl.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"password123"}'
 ```

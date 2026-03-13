@@ -418,7 +418,7 @@ npm run dev
 
 ### 5. Test API
 ```bash
-curl http://localhost:5000/health
+curl https://timetable-vmbl.onrender.com/health
 ```
 
 ---

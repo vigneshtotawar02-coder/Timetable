@@ -20,11 +20,11 @@ mkdir logs
 ```bash
 npm run dev
 ```
-Server runs on: http://localhost:5000
+Server runs on: https://timetable-vmbl.onrender.com
 
 ### 4. Test Health Check
 ```bash
-curl http://localhost:5000/health
+curl https://timetable-vmbl.onrender.com/health
 ```
 
 ---
@@ -33,7 +33,7 @@ curl http://localhost:5000/health
 
 ### Base URL
 ```
-http://localhost:5000/api
+https://timetable-vmbl.onrender.com/api
 ```
 
 ### Authentication Header
@@ -47,7 +47,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 
 ### 1. Register Admin
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST https://timetable-vmbl.onrender.com/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@test.com",
@@ -60,7 +60,7 @@ curl -X POST http://localhost:5000/api/auth/register \
 
 ### 2. Login
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST https://timetable-vmbl.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@test.com",
@@ -71,7 +71,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 ### 3. Create Room
 ```bash
-curl -X POST http://localhost:5000/api/rooms \
+curl -X POST https://timetable-vmbl.onrender.com/api/rooms \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -82,7 +82,7 @@ curl -X POST http://localhost:5000/api/rooms \
 
 ### 4. Create Course
 ```bash
-curl -X POST http://localhost:5000/api/courses \
+curl -X POST https://timetable-vmbl.onrender.com/api/courses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -96,7 +96,7 @@ curl -X POST http://localhost:5000/api/courses \
 
 ### 5. Generate Timetable 🎯
 ```bash
-curl -X POST http://localhost:5000/api/timetable/generate \
+curl -X POST https://timetable-vmbl.onrender.com/api/timetable/generate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -107,18 +107,18 @@ curl -X POST http://localhost:5000/api/timetable/generate \
 
 ### 6. Get Timetable
 ```bash
-curl http://localhost:5000/api/timetable/Computer%20Science/3 \
+curl https://timetable-vmbl.onrender.com/api/timetable/Computer%20Science/3 \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### 7. Get Analytics
 ```bash
 # Faculty Workload
-curl http://localhost:5000/api/analytics/faculty-workload \
+curl https://timetable-vmbl.onrender.com/api/analytics/faculty-workload \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Room Utilization
-curl http://localhost:5000/api/analytics/room-utilization \
+curl https://timetable-vmbl.onrender.com/api/analytics/room-utilization \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 

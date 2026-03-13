@@ -4,7 +4,7 @@ Complete API reference for the AI-Based Timetable Generation System.
 
 ## Base URL
 ```
-http://localhost:5000/api
+https://timetable-vmbl.onrender.com/api
 ```
 
 ## Authentication
@@ -662,7 +662,7 @@ Import this base collection for testing:
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:5000/api"
+      "value": "https://timetable-vmbl.onrender.com/api"
     },
     {
       "key": "token",

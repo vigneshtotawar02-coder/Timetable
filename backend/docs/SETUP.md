@@ -211,7 +211,7 @@ npm run dev
 You should see:
 ```
 Server running in development mode on port 5000
-Health check available at http://localhost:5000/health
+Health check available at https://timetable-vmbl.onrender.com/health
 ```
 
 ### Step 4: Test Health Endpoint
@@ -219,7 +219,7 @@ Health check available at http://localhost:5000/health
 Open browser or use curl:
 
 ```bash
-curl http://localhost:5000/health
+curl https://timetable-vmbl.onrender.com/health
 ```
 
 Expected response:
@@ -238,7 +238,7 @@ Expected response:
 #### 1. Register a User
 
 ```bash
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST https://timetable-vmbl.onrender.com/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@test.com",
@@ -252,7 +252,7 @@ curl -X POST http://localhost:5000/api/auth/register \
 #### 2. Login
 
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST https://timetable-vmbl.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@test.com",
@@ -265,7 +265,7 @@ Save the `access_token` from response.
 #### 3. Create a Course
 
 ```bash
-curl -X POST http://localhost:5000/api/courses \
+curl -X POST https://timetable-vmbl.onrender.com/api/courses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{
@@ -281,7 +281,7 @@ curl -X POST http://localhost:5000/api/courses \
 
 1. **Import Collection**
    - Create new collection: "Timetable API"
-   - Set variable: `baseUrl` = `http://localhost:5000/api`
+   - Set variable: `baseUrl` = `https://timetable-vmbl.onrender.com/api`
    - Set variable: `token` = (empty, will be filled after login)
 
 2. **Create Requests**
@@ -313,11 +313,11 @@ Install "REST Client" extension, then create `test.http`:
 
 ```http
 ### Variables
-@baseUrl = http://localhost:5000/api
+@baseUrl = https://timetable-vmbl.onrender.com/api
 @token = YOUR_TOKEN_HERE
 
 ### Health Check
-GET http://localhost:5000/health
+GET https://timetable-vmbl.onrender.com/health
 
 ### Register
 POST {{baseUrl}}/auth/register
@@ -494,7 +494,7 @@ server {
     server_name api.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass https://timetable-vmbl.onrender.com;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
