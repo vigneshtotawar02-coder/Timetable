@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Navy-teal academic palette */
+    --background: 220 25% 97%;
+    --foreground: 213 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 213 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 40% 12%;
+
+    /* Deep navy primary */
+    --primary: 213 62% 22%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Teal accent */
+    --accent: 178 68% 38%;
+    --accent-foreground: 0 0% 100%;
+
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 213 62% 22%;
+
+    --muted: 214 20% 93%;
+    --muted-foreground: 213 20% 50%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 28% 88%;
+    --input: 214 28% 88%;
+    --ring: 178 68% 38%;
+
+    --radius: 0.6rem;
+
+    /* Sidebar */
+    --sidebar-background: 213 62% 18%;
+    --sidebar-foreground: 210 40% 88%;
+    --sidebar-primary: 178 68% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 50% 26%;
+    --sidebar-accent-foreground: 210 40% 95%;
+    --sidebar-border: 213 50% 26%;
+    --sidebar-ring: 178 68% 42%;
+
+    /* Custom tokens */
+    --teal: 178 68% 38%;
+    --teal-light: 178 68% 48%;
+    --navy: 213 62% 22%;
+    --navy-dark: 213 62% 14%;
+    --success: 142 72% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(213 62% 18%), hsl(178 68% 28%));
+    --gradient-card: linear-gradient(135deg, hsl(213 62% 22%), hsl(213 50% 30%));
+    --gradient-teal: linear-gradient(135deg, hsl(178 68% 32%), hsl(178 68% 44%));
+    --gradient-subtle: linear-gradient(180deg, hsl(220 25% 98%), hsl(214 20% 94%));
+
+    /* Shadows */
+    --shadow-card: 0 2px 16px -4px hsl(213 62% 22% / 0.12);
+    --shadow-elevated: 0 8px 32px -8px hsl(213 62% 22% / 0.2);
+    --shadow-teal: 0 4px 20px -4px hsl(178 68% 38% / 0.35);
+  }
+
+  .dark {
+    --background: 213 40% 8%;
+    --foreground: 210 40% 95%;
+    --card: 213 40% 11%;
+    --card-foreground: 210 40% 95%;
+    --popover: 213 40% 11%;
+    --popover-foreground: 210 40% 95%;
+    --primary: 178 68% 42%;
+    --primary-foreground: 213 62% 10%;
+    --secondary: 213 40% 18%;
+    --secondary-foreground: 210 40% 90%;
+    --muted: 213 40% 16%;
+    --muted-foreground: 213 20% 60%;
+    --accent: 178 68% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 40% 18%;
+    --input: 213 40% 18%;
+    --ring: 178 68% 42%;
+    --sidebar-background: 213 50% 10%;
+    --sidebar-foreground: 210 40% 88%;
+    --sidebar-primary: 178 68% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 50% 16%;
+    --sidebar-accent-foreground: 210 40% 95%;
+    --sidebar-border: 213 50% 16%;
+    --sidebar-ring: 178 68% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  .gradient-teal {
+    background: var(--gradient-teal);
+  }
+  .gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  .shadow-teal {
+    box-shadow: var(--shadow-teal);
+  }
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+    color: hsl(var(--sidebar-foreground));
+  }
+  .sidebar-nav-item:hover {
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-accent-foreground));
+  }
+  .sidebar-nav-item.active {
+    background: hsl(var(--sidebar-primary));
+    color: hsl(var(--sidebar-primary-foreground));
+    box-shadow: var(--shadow-teal);
+  }
+}
