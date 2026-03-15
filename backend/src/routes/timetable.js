@@ -19,11 +19,7 @@ const generateValidation = [
 
 // Routes
 router.post('/generate', authenticate, authorize('admin'), generateValidation, validate, generateTimetable);
-router.get('/:department/:semester', authenticate, getTimetable);
 router.get('/faculty/:id', authenticate, getFacultyTimetable);
-router.delete('/:department/:semester', authenticate, authorize('admin'), deleteTimetable);
-
-// Debug endpoint - test raw query
 router.get('/debug/faculty/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   const { supabase } = require('../config/supabase');
@@ -55,5 +51,8 @@ router.get('/debug/faculty/:id', authenticate, async (req, res) => {
     error: facultyError
   });
 });
+
+router.get('/:department/:semester', authenticate, getTimetable);
+router.delete('/:department/:semester', authenticate, authorize('admin'), deleteTimetable);
 
 module.exports = router;

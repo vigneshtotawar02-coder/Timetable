@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const ROLES: { value: UserRole; label: string; icon: React.ReactNode; desc: string }[] = [
   { value: "admin", label: "Admin", icon: <ShieldCheck className="h-5 w-5" />, desc: "Full system access" },
-  // { value: "faculty", label: "Faculty", icon: <User className="h-5 w-5" />, desc: "View & manage courses" },
+  { value: "faculty", label: "Faculty", icon: <User className="h-5 w-5" />, desc: "View & manage courses" },
   { value: "student", label: "Student", icon: <GraduationCap className="h-5 w-5" />, desc: "View timetables" },
 ];
 

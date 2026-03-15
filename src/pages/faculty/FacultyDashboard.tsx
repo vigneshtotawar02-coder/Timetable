@@ -67,7 +67,7 @@ export default function FacultyDashboard() {
       console.log("Dashboard grid:", grid);
       console.log("Total hours:", totalHours);
       
-      return { grid, dayCount, dayHours, totalClasses: raw.length, totalHours };
+      return { grid, dayCount, dayHours, totalClasses: raw.length, totalHours, rawEntries: raw };
     },
   });
 
@@ -80,6 +80,21 @@ export default function FacultyDashboard() {
       return allCourses.filter((course: any) => course.faculty_id === user?.id);
     },
   });
+
+  // Build a map of course name -> assigned time slots from timetable raw data
+  const courseTimeSlots: Record<string, { day: string; start: string; end: string; room: string }[]> =
+    timetableQuery.data?.rawEntries?.reduce((acc: any, row: any) => {
+      const day = row.time_slots?.day || row.time_slot_details?.day || row.day;
+      const start = row.time_slots?.start_time || row.time_slot_details?.start_time;
+      const end = row.time_slots?.end_time || row.time_slot_details?.end_time;
+      const courseName = row.courses?.course_name || row.course?.course_name || String(row.course_id);
+      const room = row.rooms?.room_name || row.room?.room_name || "TBA";
+      if (day && start && end && courseName) {
+        if (!acc[courseName]) acc[courseName] = [];
+        acc[courseName].push({ day, start, end, room });
+      }
+      return acc;
+    }, {}) ?? {};
 
   // Calculate workload chart data
   const workloadData = timetableQuery.data?.dayHours
@@ -149,20 +164,36 @@ export default function FacultyDashboard() {
               <p className="text-sm text-muted-foreground">Loading courses...</p>
             ) : coursesQuery.data && coursesQuery.data.length > 0 ? (
               <div className="space-y-3">
-                {coursesQuery.data.map((course: any) => (
-                  <div key={course.id} className="p-3 rounded-lg bg-muted/50 border hover:bg-muted transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
-                        {course.course_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{course.weekly_hours}h/week</span>
+                {coursesQuery.data.map((course: any) => {
+                  const slots = courseTimeSlots[course.course_name] || [];
+                  return (
+                    <div key={course.id} className="p-3 rounded-lg bg-muted/50 border hover:bg-muted transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">
+                          {course.course_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{course.weekly_hours}h/week</span>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{course.course_name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Sem {course.semester} · {course.department}
+                      </p>
+                      {slots.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {slots.map((slot, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3 shrink-0 text-primary/60" />
+                              <span className="font-medium text-foreground/80">{slot.day}</span>
+                              <span>{slot.start.slice(0, 5)} – {slot.end.slice(0, 5)}</span>
+                              <span className="text-muted-foreground/60">·</span>
+                              <span>{slot.room}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm font-medium text-foreground">{course.course_name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Sem {course.semester} · {course.department}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
