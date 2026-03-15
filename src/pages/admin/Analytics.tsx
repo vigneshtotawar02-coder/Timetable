@@ -36,7 +36,7 @@ export default function Analytics() {
 
   const workloadChart =
     workloadQuery.data?.workload.map((w: any) => ({
-      name: w.faculty_name,
+      name: w.faculty_name || w.name || "Unknown",
       hours: w.total_hours,
     })) ?? [];
 
@@ -87,7 +87,7 @@ export default function Analytics() {
             <BarChart data={workloadChart} layout="vertical" barSize={16}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(214,28%,92%)" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, 12]} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} tickFormatter={(v) => v.split(" ").slice(-1)[0]} width={60} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
               <Tooltip contentStyle={{ fontSize: "12px", borderRadius: "8px" }} formatter={(v) => [`${v} hrs`, "Workload"]} />
               <Bar dataKey="hours" fill="hsl(213,62%,22%)" radius={[0, 4, 4, 0]} />
             </BarChart>

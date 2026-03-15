@@ -27,7 +27,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const data = await fetchFacultyWorkloadAnalytics();
       const chart: { name: string; hours: number }[] = data.workload.map((w: any) => ({
-        name: w.faculty_name,
+        name: w.faculty_name || w.name || "Unknown",
         hours: w.total_hours,
       }));
       return chart;
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={workloadQuery.data ?? []} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 28%, 92%)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} tickFormatter={(v) => v.split(" ")[1]} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} tickFormatter={(v) => v?.split(" ").slice(-1)[0] ?? v} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip
                 contentStyle={{ background: "hsl(0,0%,100%)", border: "1px solid hsl(214,28%,88%)", borderRadius: "8px", fontSize: "12px" }}
