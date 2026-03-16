@@ -5,17 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, Building2, Users, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Building2, FlaskConical, Users, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchRooms, createRoom, updateRoom, deleteRoom } from "@/lib/api";
 
 export default function Classrooms() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [editItem, setEditItem] = useState<any | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", capacity: "60" });
+  const [form, setForm] = useState({ name: "", capacity: "60", room_type: "classroom" });
 
   const { data: rooms = [], isLoading } = useQuery({
     queryKey: ["rooms"],
@@ -70,18 +73,19 @@ export default function Classrooms() {
   });
 
   const filtered = (rooms || []).filter((r: any) =>
-    r.room_name?.toLowerCase().includes(search.toLowerCase())
+    r.room_name?.toLowerCase().includes(search.toLowerCase()) &&
+    (typeFilter === "all" || r.room_type === typeFilter)
   );
 
   const openAdd = () => { 
     setEditItem(null); 
-    setForm({ name: "", capacity: "60" }); 
+    setForm({ name: "", capacity: "60", room_type: "classroom" }); 
     setDialogOpen(true); 
   };
 
   const openEdit = (r: any) => { 
     setEditItem(r); 
-    setForm({ name: r.room_name, capacity: String(r.capacity) }); 
+    setForm({ name: r.room_name, capacity: String(r.capacity), room_type: r.room_type || "classroom" }); 
     setDialogOpen(true); 
   };
 
@@ -94,6 +98,7 @@ export default function Classrooms() {
     const payload = {
       room_name: form.name,
       capacity: parseInt(form.capacity),
+      room_type: form.room_type,
     };
 
     if (editItem) {
@@ -125,6 +130,16 @@ export default function Classrooms() {
             <div className="space-y-3 mt-2">
               <div className="space-y-1"><Label>Room Name *</Label><Input placeholder="CS-101" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div className="space-y-1"><Label>Capacity *</Label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} /></div>
+              <div className="space-y-1">
+                <Label>Room Type *</Label>
+                <Select value={form.room_type} onValueChange={(v) => setForm({ ...form, room_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classroom">Classroom</SelectItem>
+                    <SelectItem value="lab">Lab</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button 
@@ -144,9 +159,24 @@ export default function Classrooms() {
         </Dialog>
       </div>
 
-      <div className="relative mb-5">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search rooms..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search rooms..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          {["all", "classroom", "lab"].map((t) => (
+            <Button
+              key={t}
+              size="sm"
+              variant={typeFilter === t ? "default" : "outline"}
+              onClick={() => setTypeFilter(t)}
+              className="capitalize"
+            >
+              {t === "all" ? "All" : t === "lab" ? "Labs" : "Classrooms"}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
@@ -158,15 +188,24 @@ export default function Classrooms() {
           {filtered.map((room: any) => (
             <div key={room.id} className="bg-card rounded-xl border shadow-card p-5 hover:shadow-elevated transition-all">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2.5 bg-muted rounded-xl"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
+                <div className="p-2.5 bg-muted rounded-xl">
+                  {room.room_type === "lab"
+                    ? <FlaskConical className="h-5 w-5 text-muted-foreground" />
+                    : <Building2 className="h-5 w-5 text-muted-foreground" />}
+                </div>
                 <div className="flex gap-1">
                   <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(room)}><Pencil className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:text-destructive" onClick={() => handleDelete(String(room.id))}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </div>
               <h3 className="text-lg font-bold text-foreground">{room.room_name}</h3>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-3">
-                <Users className="h-4 w-4" /> {room.capacity} seats
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4" /> {room.capacity} seats
+                </div>
+                <Badge variant={room.room_type === "lab" ? "secondary" : "outline"} className="capitalize text-xs">
+                  {room.room_type || "classroom"}
+                </Badge>
               </div>
             </div>
           ))}

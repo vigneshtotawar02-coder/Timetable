@@ -14,7 +14,8 @@ const router = express.Router();
 // Validation rules
 const roomValidation = [
   body('room_name').notEmpty().withMessage('Room name is required'),
-  body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive integer')
+  body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),
+  body('room_type').optional().isIn(['classroom', 'lab']).withMessage('Room type must be classroom or lab')
 ];
 
 // Routes

@@ -9,11 +9,11 @@ const logger = require('../config/logger');
  * @access  Private (Admin only)
  */
 const createRoom = asyncHandler(async (req, res, next) => {
-  const { room_name, capacity } = req.body;
+  const { room_name, capacity, room_type } = req.body;
 
   const { data, error } = await supabase
     .from('rooms')
-    .insert([{ room_name, capacity }])
+    .insert([{ room_name, capacity, room_type: room_type || 'classroom' }])
     .select()
     .single();
 
