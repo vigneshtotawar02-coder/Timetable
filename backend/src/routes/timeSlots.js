@@ -24,7 +24,7 @@ const timeSlotValidation = [
 // Routes
 router.post('/', authenticate, authorize('admin'), timeSlotValidation, validate, createTimeSlot);
 router.get('/', authenticate, getTimeSlots);
-router.put('/:id', authenticate, authorize('admin'), updateTimeSlot);
+router.put('/:id', authenticate, authorize('admin'), timeSlotValidation, validate, updateTimeSlot);
 router.delete('/:id', authenticate, authorize('admin'), deleteTimeSlot);
 
 module.exports = router;

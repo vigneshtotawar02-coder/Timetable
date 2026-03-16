@@ -94,8 +94,8 @@ export default function TimeSlots() {
 
     const payload = {
       day: form.day,
-      start_time: form.startTime + ":00",
-      end_time: form.endTime + ":00",
+      start_time: form.startTime,
+      end_time: form.endTime,
     };
 
     if (editItem) {

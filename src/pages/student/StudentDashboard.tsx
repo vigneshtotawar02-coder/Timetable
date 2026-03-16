@@ -2,9 +2,10 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import TimetableGridView from "@/components/ui/TimetableGridView";
 import StatCard from "@/components/ui/StatCard";
-import { CalendarDays, Download, BookOpen, Clock } from "lucide-react";
+import { CalendarDays, Download, BookOpen, Clock, Pencil, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -14,10 +15,13 @@ import { useNavigate } from "react-router-dom";
 import { createTimeSlotLabel } from "@/lib/utils";
 
 export default function StudentDashboard() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [dept, setDept] = useState(user?.department || "Computer Science");
   const [sem, setSem] = useState(String(user?.semester || 3));
+  const [semDialog, setSemDialog] = useState(false);
+  const [newSem, setNewSem] = useState(String(user?.semester || 3));
+  const [saving, setSaving] = useState(false);
 
   const timetableQuery = useQuery({
     queryKey: ["student-timetable", dept, sem],
@@ -47,6 +51,20 @@ export default function StudentDashboard() {
     toast({ title: "Downloading PDF...", description: "Your timetable is being prepared." });
   };
 
+  const handleSaveSemester = async () => {
+    setSaving(true);
+    try {
+      await updateUser({ semester: Number(newSem) });
+      setSem(newSem);
+      setSemDialog(false);
+      toast({ title: "Semester updated successfully!" });
+    } catch {
+      toast({ title: "Failed to update semester", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <AppLayout requiredRole="student" title="Student Dashboard">
       {/* Header */}
@@ -54,13 +72,38 @@ export default function StudentDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Hi, {user?.name?.split(" ")[0]} 👋</h1>
-            <p className="text-white/70 text-sm mt-1">{user?.department} · Semester {user?.semester} · Spring 2025</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-white/70 text-sm">{user?.department} · Semester {user?.semester} · Spring 2025</p>
+            </div>
           </div>
           <Button onClick={handleDownload} className="bg-teal hover:bg-teal-light text-white border-0">
             <Download className="h-4 w-4 mr-2" /> Download PDF
           </Button>
         </div>
       </div>
+
+      {/* Semester update dialog */}
+      <Dialog open={semDialog} onOpenChange={setSemDialog}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader><DialogTitle>Update Semester</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            <Select value={newSem} onValueChange={setNewSem}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1,2,3,4,5,6,7,8].map((s) => (
+                  <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setSemDialog(false)}>Cancel</Button>
+              <Button className="flex-1 gradient-teal text-white" onClick={handleSaveSemester} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -90,6 +133,13 @@ export default function StudentDashboard() {
               {user?.semester && <SelectItem value={String(user.semester)}>Sem {user.semester}</SelectItem>}
             </SelectContent>
           </Select>
+          <button
+            onClick={() => { setNewSem(String(user?.semester || 1)); setSemDialog(true); }}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Update semester"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
         </div>
         <Button variant="outline" size="sm" className="ml-auto" onClick={handleDownload}>
           <Download className="h-4 w-4 mr-1" /> Download

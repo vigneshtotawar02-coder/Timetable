@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { User, UserRole } from "@/types";
-import { loginApi } from "@/lib/api";
+import { loginApi, updateUser as updateUserApi } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role?: UserRole) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<User>) => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -37,8 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("tt_user");
   };
 
+  const updateUser = async (data: Partial<User>) => {
+    if (!user) return;
+    const updated = await updateUserApi(user.id, data as any);
+    const mappedUser: User = {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      department: updated.department,
+      semester: updated.semester,
+    };
+    setUser(mappedUser);
+    localStorage.setItem("tt_user", JSON.stringify(mappedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
