@@ -9,12 +9,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCourses, fetchRooms, fetchFacultyWorkloadAnalytics } from "@/lib/api";
 
-const RECENT_ACTIVITIES = [
-  { text: "New faculty Dr. Kapoor added", time: "2 min ago", type: "success" },
-  { text: "CS Dept timetable generated", time: "1 hour ago", type: "info" },
-  { text: "Room LH-201 capacity updated", time: "3 hours ago", type: "warning" },
-  { text: "EC Semester 5 timetable conflict resolved", time: "Yesterday", type: "success" },
-];
+
 
 export default function AdminDashboard() {
   const [generating, setGenerating] = useState(false);
@@ -79,10 +74,10 @@ export default function AdminDashboard() {
         <StatCard title="Timetables" value="12" subtitle="Departments active" icon={<CalendarDays className="h-5 w-5 text-white" />} iconBg="bg-success" trend={{ value: 8, label: "efficiency gain" }} />
       </div>
 
-      {/* Charts + Activity */}
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+      {/* Charts */}
+      <div className="mb-6">
         {/* Workload Chart */}
-        <div className="lg:col-span-2 bg-card rounded-xl border shadow-card p-5">
+        <div className="bg-card rounded-xl border shadow-card p-5">
           <h3 className="font-semibold text-foreground mb-1">Faculty Workload (hrs/week)</h3>
           <p className="text-xs text-muted-foreground mb-4">Distribution across all faculty members</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -97,22 +92,6 @@ export default function AdminDashboard() {
               <Bar dataKey="hours" fill="hsl(178,68%,38%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-card rounded-xl border shadow-card p-5">
-          <h3 className="font-semibold text-foreground mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            {RECENT_ACTIVITIES.map((a, i) => (
-              <div key={i} className="flex gap-3 items-start">
-                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${a.type === "success" ? "bg-success" : a.type === "warning" ? "bg-warning" : "bg-info"}`} />
-                <div>
-                  <p className="text-sm text-foreground">{a.text}</p>
-                  <p className="text-xs text-muted-foreground">{a.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
