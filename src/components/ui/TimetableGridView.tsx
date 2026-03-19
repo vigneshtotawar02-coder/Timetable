@@ -25,7 +25,11 @@ export default function TimetableGridView({ data }: TimetableGridViewProps) {
 
   const activeSlots = hasUnknownSlots
     ? [...dataSlotLabels]
-        .sort()
+        .sort((a, b) => {
+          // Parse start hour numerically so "9:00" sorts before "10:00"
+          const parseHour = (label: string) => parseInt(label.split(':')[0], 10);
+          return parseHour(a) - parseHour(b);
+        })
         .map((label) => ({ id: label, label }))
     : TIME_SLOTS.filter((s) => dataSlotLabels.size === 0 || dataSlotLabels.has(s.label) || true);
 

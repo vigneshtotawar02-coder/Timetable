@@ -47,12 +47,15 @@ export default function TimetableView() {
         const slotLabel = createTimeSlotLabel(start, end);
         
         if (!grid[day]) grid[day] = {};
+        const courseName = row.course?.course_name || "";
+        const roomName = row.room?.room_name || "";
+        const isLab = /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
         grid[day][slotLabel] = {
-          courseCode: row.course?.course_name || String(row.course_id),
-          courseName: row.course?.course_name || "",
+          courseCode: courseName || String(row.course_id),
+          courseName,
           facultyName: row.faculty?.name,
-          room: row.room?.room_name,
-          type: "lecture",
+          room: roomName,
+          type: isLab ? "lab" : "lecture",
         };
       });
       console.log("Final grid:", grid);

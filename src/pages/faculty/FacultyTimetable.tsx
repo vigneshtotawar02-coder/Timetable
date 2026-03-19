@@ -75,12 +75,16 @@ export default function FacultyTimetable() {
           
           console.log(`  Course: ${courseName}, Room: ${roomName}`);
           
+          const courseName = row.courses?.course_name || row.course?.course_name || String(row.course_id);
+          const roomName = row.rooms?.room_name || row.room?.room_name || "TBA";
+          const isLab = /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
+          
           grid[day][slotLabel] = {
             courseCode: courseName,
             courseName: courseName,
             facultyName: user?.name || "",
             room: roomName,
-            type: "lecture",
+            type: isLab ? "lab" : "lecture",
           };
           
           // Collect stats

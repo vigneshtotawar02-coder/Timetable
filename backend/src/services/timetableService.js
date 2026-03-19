@@ -52,15 +52,15 @@ class TimetableService {
     // Step 1: Calculate required classes for each course
     const courseRequirements = this.calculateCourseRequirements();
     
-    // Step 2: Try to generate timetable using greedy + backtracking
-    const success = this.generateWithBacktracking(courseRequirements, 0);
+    // Step 2: Generate timetable using greedy + best-effort scheduling
+    this.generateWithBacktracking(courseRequirements, 0);
     
-    if (!success) {
-      logger.error('Failed to generate timetable - constraints cannot be satisfied');
+    if (this.schedule.length === 0) {
+      logger.error('Failed to generate timetable - no slots could be assigned');
       return [];
     }
     
-    logger.info(`Timetable generated successfully with ${this.schedule.length} classes`);
+    logger.info(`Timetable generated with ${this.schedule.length} classes across ${new Set(this.schedule.map(s => s.day)).size} days`);
     return this.schedule;
   }
 
@@ -105,9 +105,10 @@ class TimetableService {
       const assignment = this.findBestSlot(course, assignments);
       
       if (!assignment) {
-        // Backtrack: Remove all assignments for this course
-        this.rollbackAssignments(assignments);
-        return false;
+        // Could not find a slot for this class — keep whatever was scheduled
+        // and move on (partial scheduling is better than failing entirely)
+        logger.warn(`Could not schedule all ${classesNeeded} classes for course ${course.id} (${course.name || course.code}). Scheduled ${assignments.length}/${classesNeeded}.`);
+        break;
       }
       
       // Add assignment
@@ -115,14 +116,9 @@ class TimetableService {
       this.applyAssignment(assignment);
     }
     
-    // Move to next course
-    if (this.generateWithBacktracking(courseRequirements, index + 1)) {
-      return true;
-    }
-    
-    // Backtrack if next course fails
-    this.rollbackAssignments(assignments);
-    return false;
+    // Move to next course regardless — don't let one course block others
+    this.generateWithBacktracking(courseRequirements, index + 1);
+    return true;
   }
 
   /**
@@ -162,6 +158,15 @@ class TimetableService {
   }
 
   /**
+   * Determine if a course requires a lab room based on its name or type field
+   */
+  courseNeedsLab(course) {
+    if (course.course_type === 'lab') return true;
+    const name = (course.course_name || course.name || '').toLowerCase();
+    return name.includes('lab') || name.includes('practical') || name.includes('workshop');
+  }
+
+  /**
    * Check if an assignment satisfies all constraints
    */
   isValidAssignment(course, room, timeSlot, existingAssignments) {
@@ -169,6 +174,14 @@ class TimetableService {
     const roomId = room.id;
     const day = timeSlot.day;
     const slotId = timeSlot.id;
+
+    // Constraint 0: Room type must match course type
+    // Lab courses must go in lab rooms; lecture courses must go in classroom rooms
+    const needsLab = this.courseNeedsLab(course);
+    const roomIsLab = (room.room_type || '').toLowerCase() === 'lab' ||
+                      (room.room_name || '').toLowerCase().includes('lab');
+    if (needsLab && !roomIsLab) return false;
+    if (!needsLab && roomIsLab) return false;
     
     // Constraint 1: Check faculty availability
     const availKey = `${facultyId}_${day}_${slotId}`;
@@ -225,22 +238,28 @@ class TimetableService {
   calculateAssignmentScore(course, room, timeSlot, existingAssignments) {
     let score = 100;
     
-    // Prefer spreading classes across different days
+    // Strongly prefer spreading classes across different days
     const daysUsed = new Set(existingAssignments.map(a => a.day));
     if (!daysUsed.has(timeSlot.day)) {
       score += 50; // Bonus for using a new day
     }
-    
-    // Prefer earlier time slots (morning classes)
+
+    // Prefer spreading across different time slots globally (avoid clustering)
+    const slotUsageCount = this.schedule.filter(s => s.time_slot === timeSlot.id).length;
+    score -= slotUsageCount * 10; // Penalty for already-busy slots
+
+    // Prefer spreading across different rooms (avoid always picking the same room)
+    const roomUsageCount = this.schedule.filter(s => s.room_id === room.id).length;
+    score -= roomUsageCount * 8; // Penalty for overused rooms
+
+    // Mild preference for reasonable hours (9-17), no strong morning bias
     const hour = parseInt(timeSlot.start_time.split(':')[0]);
-    if (hour >= 8 && hour <= 10) {
-      score += 30;
-    } else if (hour >= 11 && hour <= 13) {
-      score += 20;
+    if (hour >= 9 && hour <= 16) {
+      score += 5; // Small uniform bonus for standard hours
     }
     
-    // Prefer rooms with capacity closer to expected class size (if we had class size data)
-    // For now, prefer smaller rooms to save larger ones for bigger classes
+    // Prefer rooms with capacity closer to expected class size
+    // Avoid wasting large rooms on small courses
     score -= room.capacity * 0.1;
     
     // Check faculty workload balance

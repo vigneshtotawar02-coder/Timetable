@@ -37,12 +37,15 @@ export default function StudentTimetable() {
         
         if (!grid[day]) grid[day] = {};
         
+        const courseName = row.course?.course_name || String(row.course_id);
+        const roomName = row.room?.room_name || "TBA";
+        const isLab = /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
         grid[day][slotLabel] = {
-          courseCode: row.course?.course_name || String(row.course_id),
+          courseCode: courseName,
           courseName: row.course?.course_name || "",
           facultyName: row.faculty?.name || "TBA",
-          room: row.room?.room_name || "TBA",
-          type: "lecture",
+          room: roomName,
+          type: isLab ? "lab" : "lecture",
         };
         
         // Collect stats
