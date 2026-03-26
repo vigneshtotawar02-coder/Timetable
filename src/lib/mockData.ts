@@ -1,15 +1,15 @@
 import { Course, Faculty, Classroom, TimeSlot, TimetableGrid, WorkloadData, RoomUtilizationData } from "@/types";
 
-export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export const TIME_SLOTS: TimeSlot[] = [
-  { id: "ts2", label: "9:00 - 10:00", startTime: "09:00", endTime: "10:00" },
-  { id: "ts3", label: "10:00 - 11:00", startTime: "10:00", endTime: "11:00" },
-  { id: "ts4", label: "11:00 - 12:00", startTime: "11:00", endTime: "12:00" },
-  { id: "ts5", label: "12:00 - 13:00", startTime: "12:00", endTime: "13:00" },
-  { id: "ts6", label: "14:00 - 15:00", startTime: "14:00", endTime: "15:00" },
-  { id: "ts7", label: "15:00 - 16:00", startTime: "15:00", endTime: "16:00" },
-  { id: "ts8", label: "16:00 - 17:00", startTime: "16:00", endTime: "17:00" },
+  { id: "ts2",  label: "9:00 AM - 10:00 AM",  startTime: "09:00", endTime: "10:00" },
+  { id: "ts3b", label: "10:15 AM - 11:00 AM", startTime: "10:15", endTime: "11:00" },
+  { id: "ts4",  label: "11:00 AM - 12:00 PM", startTime: "11:00", endTime: "12:00" },
+  { id: "ts5a", label: "12:00 PM - 12:30 PM", startTime: "12:00", endTime: "12:30" },
+  { id: "ts6",  label: "2:00 PM - 3:00 PM",   startTime: "14:00", endTime: "15:00" },
+  { id: "ts7b", label: "3:15 PM - 4:00 PM",   startTime: "15:15", endTime: "16:00" },
+  { id: "ts8",  label: "4:00 PM - 5:00 PM",   startTime: "16:00", endTime: "17:00" },
 ];
 
 export const MOCK_COURSES: Course[] = [
@@ -39,49 +39,29 @@ export const MOCK_CLASSROOMS: Classroom[] = [
 
 export const MOCK_TIMETABLE_CS3: TimetableGrid = {
   "Monday": {
-    "9:00 - 10:00": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
-    "10:00 - 11:00": null,
-    "11:00 - 12:00": { courseCode: "CS303", courseName: "Operating Systems", facultyName: "Dr. Anita Verma", room: "CS-101", type: "lecture" },
-    "12:00 - 13:00": null,
-    "14:00 - 15:00": { courseCode: "CS301", courseName: "DSA Lab", facultyName: "Dr. Priya Sharma", room: "CS-Lab1", type: "lab" },
-    "15:00 - 16:00": { courseCode: "CS301", courseName: "DSA Lab", facultyName: "Dr. Priya Sharma", room: "CS-Lab1", type: "lab" },
-    "16:00 - 17:00": null,
+    "9:00 AM - 10:00 AM": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
+    "11:00 AM - 12:00 PM": { courseCode: "CS303", courseName: "Operating Systems", facultyName: "Dr. Anita Verma", room: "CS-101", type: "lecture" },
+    "2:00 PM - 3:00 PM": { courseCode: "CS301", courseName: "DSA Lab", facultyName: "Dr. Priya Sharma", room: "CS-Lab1", type: "lab" },
+    "3:15 PM - 4:00 PM": { courseCode: "CS301", courseName: "DSA Lab", facultyName: "Dr. Priya Sharma", room: "CS-Lab1", type: "lab" },
   },
   "Tuesday": {
-    "9:00 - 10:00": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
-    "10:00 - 11:00": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
-    "11:00 - 12:00": null,
-    "12:00 - 13:00": null,
-    "14:00 - 15:00": { courseCode: "CS303", courseName: "OS Lab", facultyName: "Dr. Anita Verma", room: "CS-Lab1", type: "lab" },
-    "15:00 - 16:00": { courseCode: "CS303", courseName: "OS Lab", facultyName: "Dr. Anita Verma", room: "CS-Lab1", type: "lab" },
-    "16:00 - 17:00": null,
+    "9:00 AM - 10:00 AM": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
+    "10:15 AM - 11:00 AM": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
+    "2:00 PM - 3:00 PM": { courseCode: "CS303", courseName: "OS Lab", facultyName: "Dr. Anita Verma", room: "CS-Lab1", type: "lab" },
+    "3:15 PM - 4:00 PM": { courseCode: "CS303", courseName: "OS Lab", facultyName: "Dr. Anita Verma", room: "CS-Lab1", type: "lab" },
   },
   "Wednesday": {
-    "9:00 - 10:00": null,
-    "10:00 - 11:00": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
-    "11:00 - 12:00": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
-    "12:00 - 13:00": null,
-    "14:00 - 15:00": null,
-    "15:00 - 16:00": null,
-    "16:00 - 17:00": null,
+    "10:15 AM - 11:00 AM": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
+    "11:00 AM - 12:00 PM": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
   },
   "Thursday": {
-    "9:00 - 10:00": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
-    "10:00 - 11:00": null,
-    "11:00 - 12:00": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
-    "12:00 - 13:00": null,
-    "14:00 - 15:00": { courseCode: "CS303", courseName: "Operating Systems", facultyName: "Dr. Anita Verma", room: "CS-101", type: "lecture" },
-    "15:00 - 16:00": null,
-    "16:00 - 17:00": null,
+    "9:00 AM - 10:00 AM": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
+    "11:00 AM - 12:00 PM": { courseCode: "CS302", courseName: "DBMS", facultyName: "Prof. Rajesh Kumar", room: "LH-201", type: "lecture" },
+    "2:00 PM - 3:00 PM": { courseCode: "CS303", courseName: "Operating Systems", facultyName: "Dr. Anita Verma", room: "CS-101", type: "lecture" },
   },
   "Friday": {
-    "9:00 - 10:00": { courseCode: "CS302", courseName: "DBMS Lab", facultyName: "Prof. Rajesh Kumar", room: "CS-Lab1", type: "lab" },
-    "10:00 - 11:00": null,
-    "11:00 - 12:00": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
-    "12:00 - 13:00": null,
-    "14:00 - 15:00": null,
-    "15:00 - 16:00": null,
-    "16:00 - 17:00": null,
+    "9:00 AM - 10:00 AM": { courseCode: "CS302", courseName: "DBMS Lab", facultyName: "Prof. Rajesh Kumar", room: "CS-Lab1", type: "lab" },
+    "11:00 AM - 12:00 PM": { courseCode: "CS301", courseName: "Data Structures", facultyName: "Dr. Priya Sharma", room: "CS-101", type: "lecture" },
   },
 };
 
