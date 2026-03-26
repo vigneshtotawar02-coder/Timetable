@@ -142,20 +142,15 @@ const updateCourse = asyncHandler(async (req, res, next) => {
 const deleteCourse = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  // Check if course exists in timetable
-  const { data: timetableData, error: timetableError } = await supabase
+  // Remove any timetable entries for this course first
+  const { error: timetableError } = await supabase
     .from('timetable')
-    .select('id')
-    .eq('course_id', id)
-    .limit(1);
+    .delete()
+    .eq('course_id', id);
 
   if (timetableError) {
-    logger.error('Error checking timetable:', timetableError);
-    return next(new AppError('Failed to validate course deletion', 500));
-  }
-
-  if (timetableData && timetableData.length > 0) {
-    return next(new AppError('Cannot delete course that is part of a timetable', 400));
+    logger.error('Error removing course from timetable:', timetableError);
+    return next(new AppError('Failed to remove course from timetable', 500));
   }
 
   const { error } = await supabase
