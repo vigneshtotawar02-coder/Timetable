@@ -12,6 +12,7 @@ const logger = require('../config/logger');
  * - Faculty availability must be respected
  * - Weekly hours must be fulfilled
  * - Balanced faculty workload
+ * - Lab courses: exactly ONE 2-hour continuous block per day (no more, no less)
  */
 class TimetableService {
   constructor(courses, facultyAvailability, rooms, timeSlots) {
@@ -65,18 +66,24 @@ class TimetableService {
   }
 
   /**
-   * Calculate how many classes each course needs based on weekly hours
-   * Assumes each class is ~1 hour
+   * Calculate how many scheduling units each course needs.
+   * For lab courses: each unit = a 2-consecutive-slot block (2 hours).
+   * For regular courses: each unit = 1 slot (~1 hour).
    */
   calculateCourseRequirements() {
     const requirements = [];
     
     this.courses.forEach(course => {
-      const classesNeeded = course.weekly_hours || 3; // Default to 3 if not specified
+      const weeklyHours = course.weekly_hours || 3;
+      const isLab = this.courseNeedsLab(course);
+      // Lab: exactly ONE 2-hour block for the entire timetable (no more, no less)
+      // Regular: number of 1-hour slots needed = weeklyHours
+      const classesNeeded = isLab ? 1 : weeklyHours;
       requirements.push({
         course,
         classesNeeded,
-        classesScheduled: 0
+        classesScheduled: 0,
+        isLab
       });
     });
     
@@ -96,24 +103,32 @@ class TimetableService {
     }
     
     const requirement = courseRequirements[index];
-    const { course, classesNeeded } = requirement;
+    const { course, classesNeeded, isLab } = requirement;
     
     // Try to schedule all required classes for this course
     const assignments = [];
     
     for (let classNum = 0; classNum < classesNeeded; classNum++) {
-      const assignment = this.findBestSlot(course, assignments);
-      
-      if (!assignment) {
-        // Could not find a slot for this class — keep whatever was scheduled
-        // and move on (partial scheduling is better than failing entirely)
-        logger.warn(`Could not schedule all ${classesNeeded} classes for course ${course.id} (${course.name || course.code}). Scheduled ${assignments.length}/${classesNeeded}.`);
-        break;
+      if (isLab) {
+        // Lab: find a pair of consecutive slots and schedule both at once
+        const pair = this.findBestLabSlotPair(course, assignments);
+        if (!pair) {
+          logger.warn(`Could not schedule all ${classesNeeded} lab blocks for course ${course.id} (${course.name || course.code}). Scheduled ${Math.floor(assignments.length / 2)}/${classesNeeded} blocks.`);
+          break;
+        }
+        assignments.push(pair.slotA, pair.slotB);
+        this.applyAssignment(pair.slotA);
+        this.applyAssignment(pair.slotB);
+      } else {
+        // Regular: find a single best slot
+        const assignment = this.findBestSlot(course, assignments);
+        if (!assignment) {
+          logger.warn(`Could not schedule all ${classesNeeded} classes for course ${course.id} (${course.name || course.code}). Scheduled ${assignments.length}/${classesNeeded}.`);
+          break;
+        }
+        assignments.push(assignment);
+        this.applyAssignment(assignment);
       }
-      
-      // Add assignment
-      assignments.push(assignment);
-      this.applyAssignment(assignment);
     }
     
     // Move to next course regardless — don't let one course block others
@@ -122,7 +137,120 @@ class TimetableService {
   }
 
   /**
-   * Find the best available slot for a course using greedy approach
+   * Find the best pair of consecutive slots for a lab course.
+   * The two slots must be on the same day and immediately adjacent (slotA ends when slotB starts).
+   * Only one lab block is allowed per day per course.
+   * @param {Object} course - Lab course to schedule
+   * @param {Array} existingAssignments - Already scheduled slots/pairs for this course
+   * @returns {{ slotA, slotB } | null}
+   */
+  findBestLabSlotPair(course, existingAssignments) {
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    // Days that already have a lab block for this course
+    const daysWithLabBlock = new Set(existingAssignments.map(a => a.day));
+
+    // Group sorted slots by day
+    const slotsByDay = new Map();
+    for (const slot of this.sortedTimeSlots) {
+      if (!slotsByDay.has(slot.day)) slotsByDay.set(slot.day, []);
+      slotsByDay.get(slot.day).push(slot);
+    }
+
+    let bestPair = null;
+    let bestScore = -Infinity;
+
+    for (const day of dayOrder) {
+      const daySlots = slotsByDay.get(day);
+      if (!daySlots) continue;
+
+      // Only one lab block per day for this course
+      if (daysWithLabBlock.has(day)) continue;
+
+      for (let i = 0; i < daySlots.length - 1; i++) {
+        const slotA = daySlots[i];
+        const slotB = daySlots[i + 1];
+
+        // Must be immediately adjacent (no gap)
+        if (!this.areAdjacentSlots(slotA, slotB)) continue;
+
+        // Try each lab room
+        for (const room of this.rooms) {
+          if (!this.isLabRoom(room)) continue;
+
+          // Validate both slots independently
+          if (
+            this.isValidLabSlot(course, room, slotA, existingAssignments) &&
+            this.isValidLabSlot(course, room, slotB, existingAssignments)
+          ) {
+            const score = this.calculateAssignmentScore(course, room, slotA, existingAssignments);
+            if (score > bestScore) {
+              bestScore = score;
+              bestPair = {
+                slotA: {
+                  course_id: course.id,
+                  faculty_id: course.faculty_id,
+                  room_id: room.id,
+                  day: slotA.day,
+                  time_slot: slotA.id
+                },
+                slotB: {
+                  course_id: course.id,
+                  faculty_id: course.faculty_id,
+                  room_id: room.id,
+                  day: slotB.day,
+                  time_slot: slotB.id
+                }
+              };
+            }
+          }
+        }
+      }
+    }
+
+    return bestPair;
+  }
+
+  /**
+   * Validate a single slot for a lab course (used when checking a slot pair).
+   * Skips Constraint 4 (consecutive check) since consecutive is required for labs.
+   */
+  isValidLabSlot(course, room, timeSlot, existingAssignments) {
+    const facultyId = course.faculty_id;
+    const roomId = room.id;
+    const day = timeSlot.day;
+    const slotId = timeSlot.id;
+
+    // Constraint 0: Room must be a lab room
+    if (!this.isLabRoom(room)) return false;
+
+    // Constraint 1: Check faculty availability
+    const availKey = `${facultyId}_${day}_${slotId}`;
+    if (!this.facultyAvailabilityIndex.get(availKey)) {
+      const hasAvailabilityData = Array.from(this.facultyAvailabilityIndex.keys())
+        .some(key => key.startsWith(`${facultyId}_`));
+      if (hasAvailabilityData && !this.facultyAvailabilityIndex.get(availKey)) {
+        return false;
+      }
+    }
+
+    // Constraint 2: No overlapping classes for faculty
+    if (!this.facultySchedule.has(facultyId)) {
+      this.facultySchedule.set(facultyId, new Set());
+    }
+    if (this.facultySchedule.get(facultyId).has(`${day}_${slotId}`)) return false;
+
+    // Constraint 3: No double booking of rooms
+    if (!this.roomSchedule.has(roomId)) {
+      this.roomSchedule.set(roomId, new Set());
+    }
+    if (this.roomSchedule.get(roomId).has(`${day}_${slotId}`)) return false;
+
+    return true;
+  }
+
+  /**
+   * Find the best available slot for a regular (non-lab) course using greedy approach
    * @param {Object} course - Course to schedule
    * @param {Array} existingAssignments - Already scheduled classes for this course
    * @returns {Object|null} Best assignment or null if none found
@@ -167,7 +295,27 @@ class TimetableService {
   }
 
   /**
-   * Check if an assignment satisfies all constraints
+   * Determine if a room is a lab room
+   */
+  isLabRoom(room) {
+    return (room.room_type || '').toLowerCase() === 'lab' ||
+           (room.room_name || '').toLowerCase().includes('lab');
+  }
+
+  /**
+   * Check if slotB starts exactly when slotA ends (strictly adjacent, no gap).
+   * Both slots must be on the same day.
+   */
+  areAdjacentSlots(slotA, slotB) {
+    if (!slotA || !slotB) return false;
+    if (slotA.day !== slotB.day) return false;
+    const endA = this.parseTime(slotA.end_time);
+    const startB = this.parseTime(slotB.start_time);
+    return startB === endA; // strictly back-to-back, zero gap
+  }
+
+  /**
+   * Check if an assignment satisfies all constraints (for regular non-lab courses only)
    */
   isValidAssignment(course, room, timeSlot, existingAssignments) {
     const facultyId = course.faculty_id;
@@ -178,16 +326,13 @@ class TimetableService {
     // Constraint 0: Room type must match course type
     // Lab courses must go in lab rooms; lecture courses must go in classroom rooms
     const needsLab = this.courseNeedsLab(course);
-    const roomIsLab = (room.room_type || '').toLowerCase() === 'lab' ||
-                      (room.room_name || '').toLowerCase().includes('lab');
+    const roomIsLab = this.isLabRoom(room);
     if (needsLab && !roomIsLab) return false;
     if (!needsLab && roomIsLab) return false;
     
     // Constraint 1: Check faculty availability
     const availKey = `${facultyId}_${day}_${slotId}`;
     if (!this.facultyAvailabilityIndex.get(availKey)) {
-      // If not explicitly set as available, check if there's any entry
-      // If no entry exists, we assume availability (open availability)
       const hasAvailabilityData = Array.from(this.facultyAvailabilityIndex.keys())
         .some(key => key.startsWith(`${facultyId}_`));
       
@@ -271,7 +416,7 @@ class TimetableService {
   }
 
   /**
-   * Check if two time slots are consecutive
+   * Check if two time slots are consecutive (within 15 min gap - used for regular courses)
    */
   areConsecutiveSlots(slotId1, slotId2) {
     const slot1 = this.timeSlots.find(s => s.id === slotId1);

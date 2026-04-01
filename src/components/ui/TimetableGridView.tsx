@@ -71,6 +71,23 @@ function buildRows(dataLabels: string[], recessDefs: { start: string; end: strin
   return rows;
 }
 
+function isConsecutiveSlots(labelA: string, labelB: string): boolean {
+  // Check if slotA ends exactly when slotB starts
+  const endA = labelA.split(" - ")[1]?.trim();
+  const startB = labelB.split(" - ")[0]?.trim();
+  if (!endA || !startB) return false;
+  // Both are in "h:mm AM/PM" form — compare as minutes
+  function toMin(t: string) {
+    const [time, period] = t.split(" ");
+    const [h, m] = time.split(":").map(Number);
+    let hour = h;
+    if (period === "PM" && hour !== 12) hour += 12;
+    if (period === "AM" && hour === 12) hour = 0;
+    return hour * 60 + m;
+  }
+  return toMin(endA) === toMin(startB);
+}
+
 interface GridTableProps {
   days: string[];
   rows: Row[];
@@ -78,6 +95,38 @@ interface GridTableProps {
 }
 
 function GridTable({ days, rows, data }: GridTableProps) {
+  // Pre-compute which (rowIdx, dayCol) cells are "part 2" of a lab pair → skip them
+  const skipCell = new Set<string>();
+  // and which (rowIdx, dayCol) cells get rowSpan=2
+  const spanCell = new Set<string>();
+
+  const dataRows = rows.filter((r) => r.kind === "data");
+
+  for (let i = 0; i < dataRows.length - 1; i++) {
+    const rowA = dataRows[i];
+    const rowB = dataRows[i + 1];
+    if (!isConsecutiveSlots(rowA.label, rowB.label)) continue;
+
+    // Find actual indices in full rows array
+    const idxA = rows.indexOf(rowA);
+    const idxB = rows.indexOf(rowB);
+
+    for (const day of days) {
+      const cellA = data[day]?.[rowA.label];
+      const cellB = data[day]?.[rowB.label];
+      if (
+        cellA &&
+        cellB &&
+        cellA.type === "lab" &&
+        cellB.type === "lab" &&
+        cellA.courseCode === cellB.courseCode
+      ) {
+        spanCell.add(`${idxA}-${day}`);
+        skipCell.add(`${idxB}-${day}`);
+      }
+    }
+  }
+
   return (
     <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
       <table className="w-full min-w-[600px] text-sm border-collapse">
@@ -116,14 +165,29 @@ function GridTable({ days, rows, data }: GridTableProps) {
                   {row.label}
                 </td>
                 {days.map((day) => {
+                  const cellKey = `${idx}-${day}`;
+
+                  // Skip: this cell is the "second half" of a merged lab block
+                  if (skipCell.has(cellKey)) return null;
+
                   const cell = data[day]?.[row.label] ?? null;
+                  const isSpanned = spanCell.has(cellKey);
+
                   return (
-                    <td key={`${day}-${row.label}`} className="p-1.5 border-r last:border-r-0 align-top min-w-[120px]">
+                    <td
+                      key={`${day}-${row.label}`}
+                      rowSpan={isSpanned ? 2 : 1}
+                      className="p-1.5 border-r last:border-r-0 align-top min-w-[120px]"
+                      style={isSpanned ? { verticalAlign: "middle" } : undefined}
+                    >
                       {cell ? (
                         <div className={cn("rounded-lg border p-2 h-full", TYPE_STYLES[cell.type])}>
                           <p className="font-bold text-[11px]">{cell.courseCode}</p>
                           <p className="text-[10px] font-medium leading-tight mt-0.5">{cell.courseName}</p>
                           <p className="text-[9px] opacity-70 mt-1 leading-tight">{cell.facultyName}</p>
+                          {isSpanned && (
+                            <p className="text-[9px] opacity-60 mt-0.5 font-semibold">2 hrs (Lab)</p>
+                          )}
                           <div className="flex items-center justify-between mt-1">
                             <span className="text-[9px] bg-black/10 rounded px-1 py-0.5">{cell.room}</span>
                             <span className="text-[9px] capitalize">{cell.type}</span>
