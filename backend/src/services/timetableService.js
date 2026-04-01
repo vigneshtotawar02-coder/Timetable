@@ -34,6 +34,7 @@ class TimetableService {
     this.facultySchedule = new Map(); // faculty_id -> Set of {day, time_slot}
     this.roomSchedule = new Map(); // room_id -> Set of {day, time_slot}
     this.courseSchedule = new Map(); // course_id -> count of scheduled classes
+    this.labDaySchedule = new Set(); // days that already have ANY lab session (global, 1 lab/day max)
     
     // Build faculty availability index for quick lookup
     this.facultyAvailabilityIndex = new Map();
@@ -72,7 +73,7 @@ class TimetableService {
    */
   calculateCourseRequirements() {
     const requirements = [];
-    
+
     this.courses.forEach(course => {
       const weeklyHours = course.weekly_hours || 3;
       const isLab = this.courseNeedsLab(course);
@@ -86,7 +87,12 @@ class TimetableService {
         isLab
       });
     });
-    
+
+    // Schedule lab courses FIRST so they get first pick of every day's windows.
+    // This ensures that if there are enough labs for all working days, each day
+    // will receive at least one lab session before regular classes fill the slots.
+    requirements.sort((a, b) => (b.isLab ? 1 : 0) - (a.isLab ? 1 : 0));
+
     return requirements;
   }
 
@@ -137,17 +143,30 @@ class TimetableService {
   }
 
   /**
-   * Find the best pair of consecutive slots for a lab course.
-   * The two slots must be on the same day and immediately adjacent (slotA ends when slotB starts).
-   * Only one lab block is allowed per day per course.
+   * Fisher-Yates shuffle — returns a new shuffled array.
+   */
+  shuffleArray(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /**
+   * Find a valid consecutive-slot pair for a lab course.
+   * Rules:
+   *   - Slots must be immediately adjacent (zero gap) on the same day.
+   *   - Only ONE lab session is allowed per day across the ENTIRE timetable (global).
+   *   - Valid pairs are collected from ALL windows, then chosen RANDOMLY so labs
+   *     spread across morning (10:30-12:30), afternoon (1:00-3:00) and evening (3:15-5:15).
    * @param {Object} course - Lab course to schedule
-   * @param {Array} existingAssignments - Already scheduled slots/pairs for this course
+   * @param {Array} existingAssignments - Already scheduled entries for this course
    * @returns {{ slotA, slotB } | null}
    */
   findBestLabSlotPair(course, existingAssignments) {
-    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-    // Days that already have a lab block for this course
+    // Days this course already occupies (always 0 for us since classesNeeded=1)
     const daysWithLabBlock = new Set(existingAssignments.map(a => a.day));
 
     // Group sorted slots by day
@@ -157,58 +176,69 @@ class TimetableService {
       slotsByDay.get(slot.day).push(slot);
     }
 
-    let bestPair = null;
-    let bestScore = -Infinity;
+    // Collect ALL valid (slotA, slotB, room) candidates across all days & windows
+    const candidates = [];
 
-    for (const day of dayOrder) {
-      const daySlots = slotsByDay.get(day);
-      if (!daySlots) continue;
-
-      // Only one lab block per day for this course
+    for (const [day, daySlots] of slotsByDay) {
+      // Skip: this course already has a lab block on this day
       if (daysWithLabBlock.has(day)) continue;
+      // Skip: another lab is already scheduled on this day (global 1-lab/day rule)
+      if (this.labDaySchedule.has(day)) continue;
 
       for (let i = 0; i < daySlots.length - 1; i++) {
         const slotA = daySlots[i];
         const slotB = daySlots[i + 1];
 
-        // Must be immediately adjacent (no gap)
+        // Must be immediately adjacent (zero gap)
         if (!this.areAdjacentSlots(slotA, slotB)) continue;
 
-        // Try each lab room
         for (const room of this.rooms) {
           if (!this.isLabRoom(room)) continue;
 
-          // Validate both slots independently
           if (
             this.isValidLabSlot(course, room, slotA, existingAssignments) &&
             this.isValidLabSlot(course, room, slotB, existingAssignments)
           ) {
-            const score = this.calculateAssignmentScore(course, room, slotA, existingAssignments);
-            if (score > bestScore) {
-              bestScore = score;
-              bestPair = {
-                slotA: {
-                  course_id: course.id,
-                  faculty_id: course.faculty_id,
-                  room_id: room.id,
-                  day: slotA.day,
-                  time_slot: slotA.id
-                },
-                slotB: {
-                  course_id: course.id,
-                  faculty_id: course.faculty_id,
-                  room_id: room.id,
-                  day: slotB.day,
-                  time_slot: slotB.id
-                }
-              };
-            }
+            candidates.push({ slotA, slotB, room, day });
           }
         }
       }
     }
 
-    return bestPair;
+    if (candidates.length === 0) return null;
+
+    // Split candidates into two tiers:
+    //   preferred  — days that have NO lab yet globally  (spread-first strategy)
+    //   fallback   — days that already have a lab (should be empty given labDaySchedule, but safety net)
+    // Within each tier, shuffle randomly so labs spread across all time windows.
+    const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const daysWithoutLab = new Set(allDays.filter(d => !this.labDaySchedule.has(d)));
+
+    const preferred = this.shuffleArray(candidates.filter(c => daysWithoutLab.has(c.day)));
+    const fallback  = this.shuffleArray(candidates.filter(c => !daysWithoutLab.has(c.day)));
+
+    const pool = preferred.length > 0 ? preferred : fallback;
+    const chosen = pool[0];
+
+    // Mark this day as occupied by a lab (global constraint)
+    this.labDaySchedule.add(chosen.day);
+
+    return {
+      slotA: {
+        course_id: course.id,
+        faculty_id: course.faculty_id,
+        room_id: chosen.room.id,
+        day: chosen.slotA.day,
+        time_slot: chosen.slotA.id
+      },
+      slotB: {
+        course_id: course.id,
+        faculty_id: course.faculty_id,
+        room_id: chosen.room.id,
+        day: chosen.slotB.day,
+        time_slot: chosen.slotB.id
+      }
+    };
   }
 
   /**
