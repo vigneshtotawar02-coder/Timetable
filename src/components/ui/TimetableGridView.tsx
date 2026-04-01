@@ -92,9 +92,10 @@ interface GridTableProps {
   days: string[];
   rows: Row[];
   data: TimetableGrid;
+  inline?: boolean; // when true, shrinks to content width (used for Saturday)
 }
 
-function GridTable({ days, rows, data }: GridTableProps) {
+function GridTable({ days, rows, data, inline = false }: GridTableProps) {
   // Pre-compute which (rowIdx, dayCol) cells are "part 2" of a lab pair → skip them
   const skipCell = new Set<string>();
   // and which (rowIdx, dayCol) cells get rowSpan=2
@@ -128,8 +129,8 @@ function GridTable({ days, rows, data }: GridTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
-      <table className="w-full min-w-[600px] text-sm border-collapse">
+    <div className={inline ? "inline-block rounded-xl border bg-card shadow-card" : "overflow-x-auto rounded-xl border bg-card shadow-card"}>
+      <table className={inline ? "min-w-[420px] text-sm border-collapse" : "w-full min-w-[600px] text-sm border-collapse"}>
         <thead>
           <tr>
             <th className="p-3 text-left text-muted-foreground font-semibold border-b border-r bg-muted/40 w-36">
@@ -146,18 +147,16 @@ function GridTable({ days, rows, data }: GridTableProps) {
           {rows.map((row, idx) =>
             row.kind === "recess" ? (
               <tr key={`recess-${row.label}`} className="border-b bg-amber-50 dark:bg-amber-950/20">
-                <td className="p-2 text-xs font-semibold text-amber-700 dark:text-amber-400 border-r whitespace-nowrap">
-                  {row.label}
+                <td
+                  colSpan={days.length + 1}
+                  className="p-2 text-center"
+                >
+                  <div className="flex items-center justify-center gap-3 min-h-[28px] rounded-md bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 mx-1">
+                    <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 tracking-widest uppercase">
+                      Recess — {row.label}
+                    </span>
+                  </div>
                 </td>
-                {days.map((day) => (
-                  <td key={`${day}-recess`} className="p-1.5 border-r last:border-r-0">
-                    <div className="flex items-center justify-center min-h-[28px] rounded-md bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700">
-                      <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 tracking-wide uppercase">
-                        Recess
-                      </span>
-                    </div>
-                  </td>
-                ))}
               </tr>
             ) : (
               <tr key={row.label} className={cn("border-b last:border-b-0", idx % 2 === 0 ? "bg-background" : "bg-muted/20")}>
@@ -235,7 +234,7 @@ export default function TimetableGridView({ data }: TimetableGridViewProps) {
       {hasSaturday && (
         <div>
           <p className="text-sm font-semibold text-muted-foreground mb-2">Saturday</p>
-          <GridTable days={["Saturday"]} rows={saturdayRows} data={data} />
+          <GridTable days={["Saturday"]} rows={saturdayRows} data={data} inline />
         </div>
       )}
     </div>
