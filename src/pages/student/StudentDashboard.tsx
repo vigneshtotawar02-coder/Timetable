@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { fetchDepartmentTimetable } from "@/lib/api";
+import { fetchDepartmentTimetable, fetchBatches, fetchLabCourses } from "@/lib/api";
 import { TimetableGrid } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { createTimeSlotLabel } from "@/lib/utils";
@@ -24,27 +24,67 @@ export default function StudentDashboard() {
   const [saving, setSaving] = useState(false);
 
   const timetableQuery = useQuery({
-    queryKey: ["student-timetable", dept, sem],
+    queryKey: ["student-timetable", dept, sem, user?.batch_id],
     queryFn: async () => {
       const raw = await fetchDepartmentTimetable(dept, Number(sem));
       const grid: TimetableGrid = {};
+      const batchId = user?.batch_id;
+
       raw.forEach((row: any) => {
         const day = row.time_slot_details?.day || row.day;
         const start = row.time_slot_details?.start_time;
         const end = row.time_slot_details?.end_time;
         if (!day || !start || !end) return;
+
         const slotLabel = createTimeSlotLabel(start, end);
         if (!grid[day]) grid[day] = {};
+
+        const rawCourseName = row.course?.course_name || String(row.course_id);
+        const rawRoomName = row.room?.room_name || "TBA";
+        const isLab = !!(row.batchAssignments?.length) || /lab|practical|workshop/i.test(rawCourseName) || /lab/i.test(rawRoomName);
+
+        // For lab slots with batch assignments, filter to this student's batch if known
+        let batchName: string | undefined;
+        let effectiveRoom = rawRoomName;
+        let effectiveCourseName = rawCourseName;
+        
+        if (row.batchAssignments && row.batchAssignments.length > 0) {
+          const myBatch = batchId
+            ? row.batchAssignments.find((ba: any) => ba.batchId === batchId || ba.batch_id === batchId)
+            : row.batchAssignments[0];
+          if (myBatch) {
+            batchName = myBatch.batchName;
+            effectiveRoom = myBatch.room || rawRoomName;
+            effectiveCourseName = myBatch.courseName || rawCourseName;
+          } else {
+            batchName = "Unassigned";
+          }
+        }
+
         grid[day][slotLabel] = {
-          courseCode: row.course?.course_name || String(row.course_id),
-          courseName: row.course?.course_name || "",
+          courseCode: effectiveCourseName,
+          courseName: effectiveCourseName,
           facultyName: row.faculty?.name,
-          room: row.room?.room_name,
-          type: "lecture",
+          room: effectiveRoom,
+          type: isLab ? "lab" : "lecture",
+          batchName,
+          batchAssignments: row.batchAssignments,
         };
       });
       return grid;
     },
+  });
+
+  // Fetch batches for the student's dept/semester
+  const batchesQuery = useQuery({
+    queryKey: ["batches", dept, sem],
+    queryFn: () => fetchBatches(dept, Number(sem)),
+  });
+
+  // Fetch lab courses for the student's dept/semester
+  const labCoursesQuery = useQuery({
+    queryKey: ["lab-courses", dept, sem],
+    queryFn: () => fetchLabCourses(dept, Number(sem)),
   });
 
   const handleDownload = () => {
@@ -166,7 +206,11 @@ export default function StudentDashboard() {
         ) : timetableQuery.isError ? (
           <p className="text-sm text-destructive">Failed to load timetable.</p>
         ) : (
-          <TimetableGridView data={timetableQuery.data || {}} />
+          <TimetableGridView 
+            data={timetableQuery.data || {}} 
+            batches={batchesQuery.data || []}
+            labCourses={labCoursesQuery.data || []}
+          />
         )}
       </div>
     </AppLayout>

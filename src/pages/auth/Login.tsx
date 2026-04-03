@@ -164,10 +164,7 @@ export default function Login() {
             <a href="/register" className="text-accent font-semibold hover:underline">Register here</a>
           </p>
 
-          <div className="mt-8 p-4 bg-muted rounded-xl">
-            <p className="text-xs text-muted-foreground text-center font-medium mb-2">Demo Credentials</p>
-            <p className="text-xs text-muted-foreground text-center">Email: <span className="text-foreground font-mono">{role}@edu.ac.in</span> · Password: <span className="text-foreground font-mono">password</span></p>
-          </div>
+
         </div>
       </div>
     </div>

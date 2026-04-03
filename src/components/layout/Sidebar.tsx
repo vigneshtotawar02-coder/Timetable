@@ -43,7 +43,7 @@ export default function Sidebar() {
 
   const navItems = user?.role === "admin" ? ADMIN_NAV : user?.role === "faculty" ? FACULTY_NAV : STUDENT_NAV;
   const roleLabel = user?.role === "admin" ? "Administrator" : user?.role === "faculty" ? "Faculty Member" : "Student";
-  const roleColor = user?.role === "admin" ? "bg-warning/20 text-warning" : user?.role === "faculty" ? "bg-teal/20 text-teal" : "bg-info/20 text-info";
+  const roleColor = user?.role === "admin" ? "bg-warning/20 text-white" : user?.role === "faculty" ? "bg-teal/20 text-white" : "bg-info/20 text-white";
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

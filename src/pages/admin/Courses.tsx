@@ -226,10 +226,7 @@ export default function Courses() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
-                  <Label>Hours/Week *</Label>
-                  <Input type="number" min="1" max="10" value={form.hoursPerWeek} onChange={(e) => setForm({ ...form, hoursPerWeek: e.target.value })} />
-                </div>
+
               </div>
               {form.courseType === "lab" && (
                 <p className="text-xs text-muted-foreground bg-muted/40 rounded p-2">
