@@ -65,41 +65,30 @@ class BatchPracticalScheduler {
     const totalCourses = this.labCourses.length;
 
     uniqueSlots.forEach((slot, slotIdx) => {
-      // Pick N courses for this slot using a round-robin offset across slots
-      // so different slots use different course subsets
-      const courseSubset = [];
-      for (let i = 0; i < N; i++) {
-        courseSubset.push(this.labCourses[(slotIdx * N + i) % totalCourses]);
-      }
-
       // Assign rooms — one distinct room per batch
       const roomMap = this._assignRooms(slot.day, slot.time_slot, N);
 
-      // Build N weeks of rotation across the N courses in this slot's subset
-      for (let week = 0; week < N; week++) {
-        for (let i = 0; i < N; i++) {
-          // Latin-square: batch i in week w gets courseSubset[(i + w) % N]
-          // This guarantees every batch gets a DIFFERENT course each week
-          const course = courseSubset[(i + week) % N];
-          const batch = this.batches[i];
+      for (let i = 0; i < N; i++) {
+        // Simple shift: batch i gets course (i + slotIdx) % totalCourses
+        // This ensures that across the week's slots, each batch cycles through all lab subjects.
+        const course = this.labCourses[(i + slotIdx) % totalCourses];
+        const batch = this.batches[i];
 
-          assignments.push({
-            batch_id: batch.id,
-            course_id: course.id,
-            room_id: roomMap[i] || null,
-            day: slot.day,
-            time_slot: slot.time_slot,
-            week_number: week + 1,
-            department: batch.department,
-            semester: batch.semester,
-          });
-        }
+        assignments.push({
+          batch_id: batch.id,
+          course_id: course.id,
+          room_id: roomMap[i] || null,
+          day: slot.day,
+          time_slot: slot.time_slot,
+          week_number: 1, // Only one week needed; rotation happens across slots
+          department: batch.department,
+          semester: batch.semester,
+        });
       }
 
       logger.info(
         `Slot ${slot.day}/${slot.time_slot}: ` +
-        `courses=[${courseSubset.map(c => c.course_name).join(', ')}] ` +
-        `→ ${N} batches × ${N} weeks`
+        `assigned ${N} batches across lab subjects`
       );
     });
 
