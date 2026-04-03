@@ -211,7 +211,10 @@ function GridTable({ days, rows, data, inline = false, batches = [], labCourses 
                                   <div className="flex items-center gap-1 flex-wrap">
                                     <span className="text-[9px] font-bold bg-black/15 rounded px-1 shrink-0">{ba.batchName}</span>
                                     {ba.courseName && (
-                                      <span className="text-[9px] font-semibold leading-tight opacity-80">{ba.courseName}</span>
+                                      <span className="text-[9px] font-semibold leading-tight opacity-80">
+                                        {ba.facultyName && <span className="opacity-70 font-normal mr-1">{ba.facultyName} •</span>}
+                                        {ba.courseName}
+                                      </span>
                                     )}
                                   </div>
                                   {ba.room && (
@@ -235,11 +238,16 @@ function GridTable({ days, rows, data, inline = false, batches = [], labCourses 
                                     <div key={batch.id} className="rounded border border-current/20 bg-black/5 px-1.5 py-1">
                                       <div className="flex items-center gap-1 flex-wrap">
                                         <span className="text-[9px] font-bold bg-black/15 rounded px-1 shrink-0">{batch.name}</span>
-                                        {labCourses.length > 0 && (
-                                          <span className="text-[9px] font-semibold leading-tight opacity-80">
-                                            {labCourses[(i + slotIdx) % labCourses.length]?.course_name}
-                                          </span>
-                                        )}
+                                        {labCourses.length > 0 && (() => {
+                                          const labCourse = labCourses[(i + slotIdx) % labCourses.length];
+                                          const facultyName = labCourse?.facultyName || labCourse?.faculty?.name;
+                                          return (
+                                            <span className="text-[9px] font-semibold leading-tight opacity-80">
+                                              {facultyName && <span className="opacity-70 font-normal mr-1">{facultyName} •</span>}
+                                              {labCourse?.course_name || labCourse?.name}
+                                            </span>
+                                          );
+                                        })()}
                                       </div>
                                     </div>
                                   ))}

@@ -222,7 +222,7 @@ const getTimetable = asyncHandler(async (req, res, next) => {
     .select(`
       *,
       batch:batches(id, name),
-      course:courses(id, course_name, course_type),
+      course:courses(id, course_name, course_type, faculty:users!faculty_id(name)),
       room:rooms(id, room_name),
       slot:time_slots(id, day, start_time, end_time)
     `)
@@ -274,7 +274,7 @@ const getTimetable = asyncHandler(async (req, res, next) => {
       batchName: ba.batch?.name || '',
       courseCode: ba.course?.course_name || '',
       courseName: ba.course?.course_name || '',
-      facultyName: item.faculty_name || '',
+      facultyName: ba.course?.faculty?.name || item.faculty_name || '',
       room: ba.room?.room_name || '',
     }));
 
