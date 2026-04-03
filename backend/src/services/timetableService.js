@@ -68,18 +68,33 @@ class TimetableService {
 
   /**
    * Calculate how many scheduling units each course needs.
-   * For lab courses: each unit = a 2-consecutive-slot block (2 hours).
-   * For regular courses: each unit = 1 slot (~1 hour).
+   * For lab courses: one 2-hour block per working day (spread across the week),
+   *   capped at the number of available working days.
+   *   The global labDaySchedule constraint ensures at most ONE lab per day total.
+   * For regular courses: number of 1-hour slots = weeklyHours.
    */
   calculateCourseRequirements() {
     const requirements = [];
 
+    // Count available working days from time slots
+    const workingDays = [...new Set(this.timeSlots.map(ts => ts.day))];
+    const numWorkingDays = workingDays.length || 5;
+
     this.courses.forEach(course => {
       const weeklyHours = course.weekly_hours || 3;
       const isLab = this.courseNeedsLab(course);
-      // Lab: exactly ONE 2-hour block for the entire timetable (no more, no less)
-      // Regular: number of 1-hour slots needed = weeklyHours
-      const classesNeeded = isLab ? 1 : weeklyHours;
+
+      let classesNeeded;
+      if (isLab) {
+        // Each lab course gets one 2-hour block per day it can be scheduled.
+        // weekly_hours / 2 gives how many 2-hour blocks are needed per week.
+        // Cap at numWorkingDays so we don't try to schedule more days than exist.
+        const blocksNeeded = Math.max(1, Math.round(weeklyHours / 2));
+        classesNeeded = Math.min(blocksNeeded, numWorkingDays);
+      } else {
+        classesNeeded = weeklyHours;
+      }
+
       requirements.push({
         course,
         classesNeeded,
@@ -88,9 +103,7 @@ class TimetableService {
       });
     });
 
-    // Schedule lab courses FIRST so they get first pick of every day's windows.
-    // This ensures that if there are enough labs for all working days, each day
-    // will receive at least one lab session before regular classes fill the slots.
+    // Schedule lab courses FIRST so they claim days before regular courses fill slots
     requirements.sort((a, b) => (b.isLab ? 1 : 0) - (a.isLab ? 1 : 0));
 
     return requirements;
@@ -155,15 +168,14 @@ class TimetableService {
   }
 
   /**
-   * Find a valid consecutive-slot pair for a lab course.
+   * Find a valid consecutive-slot pair for a lab/practical course.
    * Rules:
    *   - Slots must be immediately adjacent (zero gap) on the same day.
-   *   - Only ONE lab session is allowed per day across the ENTIRE timetable (global).
+   *   - At most ONE lab session per day across the ENTIRE timetable (global).
    *   - Valid pairs are collected from ALL windows, then chosen RANDOMLY so labs
-   *     spread across morning (10:30-12:30), afternoon (1:00-3:00) and evening (3:15-5:15).
-   * @param {Object} course - Lab course to schedule
-   * @param {Array} existingAssignments - Already scheduled entries for this course
-   * @returns {{ slotA, slotB } | null}
+   *     spread across morning, afternoon and evening windows.
+   *   - Each lab course can have multiple blocks (one per day), but each day
+   *     can only have one lab block total across all lab courses.
    */
   findBestLabSlotPair(course, existingAssignments) {
     // Days this course already occupies (always 0 for us since classesNeeded=1)
@@ -317,9 +329,10 @@ class TimetableService {
 
   /**
    * Determine if a course requires a lab room based on its name or type field
+   * lab and practical are treated identically
    */
   courseNeedsLab(course) {
-    if (course.course_type === 'lab') return true;
+    if (course.course_type === 'lab' || course.course_type === 'practical') return true;
     const name = (course.course_name || course.name || '').toLowerCase();
     return name.includes('lab') || name.includes('practical') || name.includes('workshop');
   }
@@ -354,7 +367,7 @@ class TimetableService {
     const slotId = timeSlot.id;
 
     // Constraint 0: Room type must match course type
-    // Lab courses must go in lab rooms; lecture courses must go in classroom rooms
+    // Lab/practical courses must go in lab rooms; lecture courses must go in non-lab rooms
     const needsLab = this.courseNeedsLab(course);
     const roomIsLab = this.isLabRoom(room);
     if (needsLab && !roomIsLab) return false;

@@ -16,10 +16,7 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("tt_token");
   if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
+    config.headers.set("Authorization", `Bearer ${token}`);
   }
   // Log all API requests for debugging
   console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
@@ -122,12 +119,23 @@ export async function fetchCourses() {
   return res.data.data.courses;
 }
 
+/** Fetch lab/practical courses for a specific department+semester */
+export async function fetchLabCourses(department: string, semester: number) {
+  const res = await api.get<{ success: boolean; data: { courses: any[] } }>("/api/courses", {
+    params: { department, semester },
+  });
+  const all = res.data.data.courses || [];
+  return all.filter((c: any) => c.course_type === "lab" || c.course_type === "practical");
+}
+
 export async function createCourse(payload: {
   course_name: string;
   department: string;
   semester: number;
   faculty_id: string | null;
   weekly_hours: number;
+  course_type?: string;
+  rotation_group?: string | null;
 }) {
   const res = await api.post<{ success: boolean; data: { course: any } }>("/api/courses", payload);
   return res.data.data.course;
@@ -141,6 +149,8 @@ export async function updateCourse(
     semester: number;
     faculty_id: string | null;
     weekly_hours: number;
+    course_type: string;
+    rotation_group: string | null;
   }>,
 ) {
   const res = await api.put<{ success: boolean; data: { course: any } }>(`/api/courses/${id}`, payload);
@@ -265,3 +275,33 @@ export async function fetchDepartmentOverviewAnalytics(params?: {
   return res.data.data;
 }
 
+
+// Batches
+export async function fetchBatches(department?: string, semester?: number) {
+  const res = await api.get<{ success: boolean; data: { batches: any[] } }>("/api/batches", {
+    params: { department, semester },
+  });
+  return res.data.data.batches;
+}
+
+export async function createBatch(payload: { name: string; department: string; semester: number }) {
+  const res = await api.post<{ success: boolean; data: { batch: any } }>("/api/batches", payload);
+  return res.data.data.batch;
+}
+
+export async function updateBatch(id: string, payload: { name: string }) {
+  const res = await api.put<{ success: boolean; data: { batch: any } }>(`/api/batches/${id}`, payload);
+  return res.data.data.batch;
+}
+
+export async function deleteBatch(id: string) {
+  const res = await api.delete<{ success: boolean; message: string }>(`/api/batches/${id}`);
+  return res.data;
+}
+
+export async function fetchBatchAssignments(batchId: string) {
+  const res = await api.get<{ success: boolean; data: { assignments: any[] } }>(
+    `/api/batches/${batchId}/assignments`
+  );
+  return res.data.data.assignments;
+}

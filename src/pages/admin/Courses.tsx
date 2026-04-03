@@ -23,7 +23,8 @@ export default function Courses() {
     department: "", 
     semester: "1", 
     facultyId: "", 
-    hoursPerWeek: "3" 
+    hoursPerWeek: "3",
+    courseType: "lecture",
   });
 
   const { data: courses = [], isLoading } = useQuery({
@@ -40,6 +41,8 @@ export default function Courses() {
         facultyId: c.faculty_id || "",
         facultyName: c.faculty?.name || "",
         hoursPerWeek: c.weekly_hours || 3,
+        courseType: c.course_type || "lecture",
+        rotationGroup: c.rotation_group || "",
       }));
     },
   });
@@ -103,7 +106,7 @@ export default function Courses() {
 
   const openAdd = () => {
     setEditCourse(null);
-    setForm({ name: "", department: "", semester: "1", facultyId: "unassigned", hoursPerWeek: "3" });
+    setForm({ name: "", department: "", semester: "1", facultyId: "unassigned", hoursPerWeek: "3", courseType: "lecture" });
     setDialogOpen(true);
   };
 
@@ -114,7 +117,8 @@ export default function Courses() {
       department: c.department, 
       semester: String(c.semester), 
       facultyId: c.facultyId || "unassigned", 
-      hoursPerWeek: String(c.hoursPerWeek) 
+      hoursPerWeek: String(c.hoursPerWeek),
+      courseType: (c as any).courseType || "lecture",
     });
     setDialogOpen(true);
   };
@@ -131,6 +135,8 @@ export default function Courses() {
       semester: parseInt(form.semester),
       faculty_id: form.facultyId && form.facultyId !== "unassigned" ? form.facultyId : null,
       weekly_hours: parseInt(form.hoursPerWeek),
+      course_type: form.courseType,
+      rotation_group: null, // auto-managed by scheduler
     };
 
     if (editCourse) {
@@ -208,6 +214,28 @@ export default function Courses() {
                   <Input type="number" min="1" max="10" value={form.hoursPerWeek} onChange={(e) => setForm({ ...form, hoursPerWeek: e.target.value })} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Course Type</Label>
+                  <Select value={form.courseType} onValueChange={(v) => setForm({ ...form, courseType: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lecture">Lecture</SelectItem>
+                      <SelectItem value="lab">Lab / Practical</SelectItem>
+                      <SelectItem value="seminar">Seminar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Hours/Week *</Label>
+                  <Input type="number" min="1" max="10" value={form.hoursPerWeek} onChange={(e) => setForm({ ...form, hoursPerWeek: e.target.value })} />
+                </div>
+              </div>
+              {form.courseType === "lab" && (
+                <p className="text-xs text-muted-foreground bg-muted/40 rounded p-2">
+                  Lab/Practical courses are automatically split across batches (B1, B2, B3…) during timetable generation. Each batch attends simultaneously but rotates subjects each week.
+                </p>
+              )}
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button 
@@ -247,13 +275,14 @@ export default function Courses() {
                 <th className="text-left p-4 font-semibold text-muted-foreground hidden md:table-cell">Department</th>
                 <th className="text-left p-4 font-semibold text-muted-foreground hidden sm:table-cell">Sem</th>
                 <th className="text-left p-4 font-semibold text-muted-foreground hidden lg:table-cell">Faculty</th>
+                <th className="text-left p-4 font-semibold text-muted-foreground hidden lg:table-cell">Type</th>
                 <th className="text-left p-4 font-semibold text-muted-foreground">Hrs/Week</th>
                 <th className="text-right p-4 font-semibold text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center p-12 text-muted-foreground"><BookOpen className="h-10 w-10 mx-auto mb-2 opacity-30" /><p>No courses found</p></td></tr>
+                <tr><td colSpan={7} className="text-center p-12 text-muted-foreground"><BookOpen className="h-10 w-10 mx-auto mb-2 opacity-30" /><p>No courses found</p></td></tr>
               ) : filtered.map((course: Course, i: number) => (
                 <tr key={course.id} className={`border-b last:border-b-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
                   <td className="p-4 font-medium text-foreground">{course.name}</td>
@@ -262,6 +291,15 @@ export default function Courses() {
                   </td>
                   <td className="p-4 text-muted-foreground hidden sm:table-cell">Sem {course.semester}</td>
                   <td className="p-4 text-muted-foreground hidden lg:table-cell">{course.facultyName || "—"}</td>
+                  <td className="p-4 hidden lg:table-cell">
+                    {(course as any).courseType && (course as any).courseType !== "lecture" ? (
+                      <Badge variant="outline" className="text-[10px] capitalize bg-accent/10 text-accent border-accent/30">
+                        {(course as any).courseType === "lab" ? "Lab / Practical" : (course as any).courseType}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Lecture</span>
+                    )}
+                  </td>
                   <td className="p-4"><span className="text-xs bg-accent/10 text-accent px-2 py-1 rounded font-semibold">{course.hoursPerWeek} hrs</span></td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-1">

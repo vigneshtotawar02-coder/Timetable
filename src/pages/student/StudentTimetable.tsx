@@ -4,8 +4,9 @@ import TimetableGridView from "@/components/ui/TimetableGridView";
 import { Download, Calendar, BookOpen, Users, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { fetchDepartmentTimetable } from "@/lib/api";
+import { fetchDepartmentTimetable, fetchBatches, fetchLabCourses } from "@/lib/api";
 import { TimetableGrid } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { createTimeSlotLabel } from "@/lib/utils";
@@ -14,13 +15,13 @@ export default function StudentTimetable() {
   const { user } = useAuth();
   const department = user?.department || "Computer Science";
   const semester = user?.semester || 3;
+  const batchId = user?.batch_id;
 
   const timetableQuery = useQuery({
-    queryKey: ["student-timetable", department, semester],
+    queryKey: ["student-timetable", department, semester, batchId],
     queryFn: async () => {
       const raw = await fetchDepartmentTimetable(department, Number(semester));
       
-      // Transform raw data into grid format
       const grid: TimetableGrid = {};
       const courses = new Set<string>();
       const faculty = new Set<string>();
@@ -34,24 +35,41 @@ export default function StudentTimetable() {
         if (!day || !start || !end) return;
         
         const slotLabel = createTimeSlotLabel(start, end);
-        
         if (!grid[day]) grid[day] = {};
         
         const courseName = row.course?.course_name || String(row.course_id);
         const roomName = row.room?.room_name || "TBA";
-        const isLab = /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
+        const isLab = !!(row.batchAssignments?.length) || /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
+
+        // For lab slots with batch assignments, filter to this student's batch
+        let batchName: string | undefined;
+        let effectiveRoom = roomName;
+        let effectiveCourseName = courseName;
+        if (row.batchAssignments && row.batchAssignments.length > 0) {
+          const myBatch = batchId
+            ? row.batchAssignments.find((ba: any) => ba.batchId === batchId || ba.batch_id === batchId)
+            : row.batchAssignments[0];
+          if (myBatch) {
+            batchName = myBatch.batchName;
+            effectiveRoom = myBatch.room || roomName;
+            effectiveCourseName = myBatch.courseName || courseName;
+          } else {
+            batchName = "Unassigned";
+          }
+        }
+
         grid[day][slotLabel] = {
-          courseCode: courseName,
-          courseName: row.course?.course_name || "",
+          courseCode: effectiveCourseName,
+          courseName: effectiveCourseName,
           facultyName: row.faculty?.name || "TBA",
-          room: roomName,
+          room: effectiveRoom,
           type: isLab ? "lab" : "lecture",
+          batchName,
         };
         
-        // Collect stats
         if (row.course?.course_name) courses.add(row.course.course_name);
         if (row.faculty?.name) faculty.add(row.faculty.name);
-        if (row.room?.room_name) rooms.add(row.room.room_name);
+        if (effectiveRoom && effectiveRoom !== "TBA") rooms.add(effectiveRoom);
       });
       
       return {
@@ -64,6 +82,18 @@ export default function StudentTimetable() {
         }
       };
     },
+  });
+
+  // Fetch batches for the student's dept/semester
+  const batchesQuery = useQuery({
+    queryKey: ["batches", department, semester],
+    queryFn: () => fetchBatches(department, Number(semester)),
+  });
+
+  // Fetch lab courses for the student's dept/semester
+  const labCoursesQuery = useQuery({
+    queryKey: ["lab-courses", department, semester],
+    queryFn: () => fetchLabCourses(department, Number(semester)),
   });
 
   const handleDownloadPDF = () => {
@@ -90,6 +120,7 @@ export default function StudentTimetable() {
             </h1>
             <p className="text-white/80 text-sm mt-2">
               {department} · Semester {semester} · Academic Year 2024-25
+              {batchId && <Badge className="ml-2 bg-white/20 text-white border-white/30 text-xs">Batch assigned</Badge>}
             </p>
           </div>
           <div className="flex gap-2">
@@ -222,7 +253,11 @@ export default function StudentTimetable() {
               </div>
             </div>
           ) : (
-            <TimetableGridView data={timetableQuery.data.grid} />
+            <TimetableGridView
+              data={timetableQuery.data.grid}
+              batches={batchesQuery.data || []}
+              labCourses={labCoursesQuery.data || []}
+            />
           )}
         </CardContent>
       </Card>

@@ -12,6 +12,7 @@ const roomRoutes = require('./routes/rooms');
 const timeSlotRoutes = require('./routes/timeSlots');
 const facultyAvailabilityRoutes = require('./routes/facultyAvailability');
 const analyticsRoutes = require('./routes/analytics');
+const batchRoutes = require('./routes/batches');
 
 // Initialize Express app
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/time-slots', timeSlotRoutes);
 app.use('/api/faculty-availability', facultyAvailabilityRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/batches', batchRoutes);
 
 // 404 handler
 app.use(notFound);

@@ -7,6 +7,7 @@ export interface User {
   role: UserRole;
   department?: string;
   semester?: number;
+  batch_id?: string;
 }
 
 export interface Course {
@@ -49,12 +50,42 @@ export interface TimeSlot {
   day?: string;
 }
 
+export interface Batch {
+  id: string;
+  name: string;
+  department: string;
+  semester: number;
+  created_at?: string;
+}
+
+export interface BatchAssignment {
+  id: string;
+  batch_id: string;
+  course_id: string;
+  room_id: string;
+  day: string;
+  time_slot: string;
+  week_number: number;
+  department: string;
+  semester: number;
+}
+
+export interface BatchAssignmentCell {
+  batchName: string;
+  courseCode: string;
+  courseName: string;
+  facultyName: string;
+  room: string;
+}
+
 export interface TimetableCell {
   courseCode: string;
   courseName: string;
   facultyName: string;
   room: string;
   type: "lecture" | "lab" | "seminar";
+  batchName?: string;
+  batchAssignments?: BatchAssignmentCell[];
 }
 
 export interface TimetableEntry {

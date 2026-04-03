@@ -17,6 +17,7 @@ import Classrooms from "@/pages/admin/Classrooms";
 import TimeSlots from "@/pages/admin/TimeSlots";
 import TimetableView from "@/pages/admin/TimetableView";
 import Analytics from "@/pages/admin/Analytics";
+import BatchManagement from "@/pages/admin/BatchManagement";
 
 // Faculty
 import FacultyDashboard from "@/pages/faculty/FacultyDashboard";
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/admin/timeslots" element={<TimeSlots />} />
       <Route path="/admin/timetable" element={<TimetableView />} />
       <Route path="/admin/analytics" element={<Analytics />} />
+      <Route path="/admin/batches" element={<BatchManagement />} />
 
       {/* Faculty Routes */}
       <Route path="/faculty" element={<FacultyDashboard />} />

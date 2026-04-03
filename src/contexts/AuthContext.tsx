@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: apiUser.role,
       department: apiUser.department,
       semester: apiUser.semester,
+      batch_id: apiUser.batch_id,
     };
     setUser(mappedUser);
     localStorage.setItem("tt_user", JSON.stringify(mappedUser));
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: updated.role,
       department: updated.department,
       semester: updated.semester,
+      batch_id: updated.batch_id,
     };
     setUser(mappedUser);
     localStorage.setItem("tt_user", JSON.stringify(mappedUser));

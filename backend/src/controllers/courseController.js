@@ -9,7 +9,7 @@ const logger = require('../config/logger');
  * @access  Private (Admin only)
  */
 const createCourse = asyncHandler(async (req, res, next) => {
-  const { course_name, department, semester, faculty_id, weekly_hours } = req.body;
+  const { course_name, department, semester, faculty_id, weekly_hours, course_type, rotation_group } = req.body;
 
   const { data, error } = await supabase
     .from('courses')
@@ -19,7 +19,9 @@ const createCourse = asyncHandler(async (req, res, next) => {
         department,
         semester,
         faculty_id,
-        weekly_hours
+        weekly_hours,
+        course_type: course_type || 'lecture',
+        rotation_group: rotation_group || null,
       }
     ])
     .select()
@@ -107,7 +109,16 @@ const getCourse = asyncHandler(async (req, res, next) => {
  */
 const updateCourse = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const updateData = req.body;
+  const { course_name, department, semester, faculty_id, weekly_hours, course_type, rotation_group } = req.body;
+
+  const updateData = {};
+  if (course_name !== undefined) updateData.course_name = course_name;
+  if (department !== undefined) updateData.department = department;
+  if (semester !== undefined) updateData.semester = semester;
+  if (faculty_id !== undefined) updateData.faculty_id = faculty_id;
+  if (weekly_hours !== undefined) updateData.weekly_hours = weekly_hours;
+  if (course_type !== undefined) updateData.course_type = course_type;
+  if (rotation_group !== undefined) updateData.rotation_group = rotation_group;
 
   const { data, error } = await supabase
     .from('courses')

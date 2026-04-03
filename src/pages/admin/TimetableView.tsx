@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, RefreshCw, Zap, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { generateDepartmentTimetable, fetchDepartmentTimetable } from "@/lib/api";
+import { generateDepartmentTimetable, fetchDepartmentTimetable, fetchBatches, fetchLabCourses } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TimetableGrid } from "@/types";
 import html2canvas from "html2canvas";
@@ -49,18 +49,31 @@ export default function TimetableView() {
         if (!grid[day]) grid[day] = {};
         const courseName = row.course?.course_name || "";
         const roomName = row.room?.room_name || "";
-        const isLab = /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
+        const isLab = !!(row.batchAssignments?.length) || /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
         grid[day][slotLabel] = {
           courseCode: courseName || String(row.course_id),
           courseName,
           facultyName: row.faculty?.name,
           room: roomName,
           type: isLab ? "lab" : "lecture",
+          batchAssignments: row.batchAssignments,
         };
       });
       console.log("Final grid:", grid);
       return grid;
     },
+  });
+
+  // Fetch batches for the selected dept/semester
+  const batchesQuery = useQuery({
+    queryKey: ["batches", dept, sem],
+    queryFn: () => fetchBatches(dept, Number(sem)),
+  });
+
+  // Fetch lab courses for the selected dept/semester
+  const labCoursesQuery = useQuery({
+    queryKey: ["lab-courses", dept, sem],
+    queryFn: () => fetchLabCourses(dept, Number(sem)),
   });
 
   const generateMutation = useMutation({
@@ -193,7 +206,11 @@ export default function TimetableView() {
             <Badge className="bg-primary/10 text-primary border-primary/20">{dept}</Badge>
             <Badge variant="outline">Semester {sem}</Badge>
           </div>
-          <TimetableGridView data={timetableQuery.data} />
+          <TimetableGridView
+            data={timetableQuery.data}
+            batches={batchesQuery.data || []}
+            labCourses={labCoursesQuery.data || []}
+          />
         </div>
       ) : null}
     </AppLayout>

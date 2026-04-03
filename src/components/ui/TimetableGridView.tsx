@@ -2,8 +2,22 @@ import { TimetableGrid } from "@/types";
 import { DAYS } from "@/lib/mockData";
 import { cn, formatTimeSlot } from "@/lib/utils";
 
+export interface BatchInfo {
+  id: string;
+  name: string;
+}
+
+export interface LabCourseInfo {
+  id: string;
+  course_name: string;
+}
+
 interface TimetableGridViewProps {
   data: TimetableGrid;
+  /** Batches for the semester (fetched by parent) */
+  batches?: BatchInfo[];
+  /** Lab/practical courses for the semester (fetched by parent) */
+  labCourses?: LabCourseInfo[];
 }
 
 const TYPE_STYLES = {
@@ -93,9 +107,13 @@ interface GridTableProps {
   rows: Row[];
   data: TimetableGrid;
   inline?: boolean; // when true, shrinks to content width (used for Saturday)
+  batches?: BatchInfo[];
+  labCourses?: LabCourseInfo[];
+  /** Maps "day|slotLabel" → sequential index among all fallback lab slots in the week */
+  labSlotIndexMap?: Map<string, number>;
 }
 
-function GridTable({ days, rows, data, inline = false }: GridTableProps) {
+function GridTable({ days, rows, data, inline = false, batches = [], labCourses = [], labSlotIndexMap }: GridTableProps) {
   // Pre-compute which (rowIdx, dayCol) cells are "part 2" of a lab pair → skip them
   const skipCell = new Set<string>();
   // and which (rowIdx, dayCol) cells get rowSpan=2
@@ -181,16 +199,71 @@ function GridTable({ days, rows, data, inline = false }: GridTableProps) {
                     >
                       {cell ? (
                         <div className={cn("rounded-lg border p-2 h-full", TYPE_STYLES[cell.type])}>
-                          <p className="font-bold text-[11px]">{cell.courseCode}</p>
-                          <p className="text-[10px] font-medium leading-tight mt-0.5">{cell.courseName}</p>
-                          <p className="text-[9px] opacity-70 mt-1 leading-tight">{cell.facultyName}</p>
-                          {isSpanned && (
-                            <p className="text-[9px] opacity-60 mt-0.5 font-semibold">2 hrs (Lab)</p>
+                          {cell.batchAssignments && cell.batchAssignments.length > 0 ? (
+                            // Lab slot with real batch assignments: batch name + assigned course
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[9px] font-bold uppercase opacity-50 tracking-wide">Lab Session</span>
+                                <span className="text-[9px] bg-black/10 rounded px-1 opacity-60">2 hrs</span>
+                              </div>
+                              {cell.batchAssignments.map((ba, i) => (
+                                <div key={i} className="rounded border border-current/20 bg-black/5 px-1.5 py-1">
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-[9px] font-bold bg-black/15 rounded px-1 shrink-0">{ba.batchName}</span>
+                                    {ba.courseName && (
+                                      <span className="text-[9px] font-semibold leading-tight opacity-80">{ba.courseName}</span>
+                                    )}
+                                  </div>
+                                  {ba.room && (
+                                    <span className="text-[9px] opacity-60 mt-0.5 block">{ba.room}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : cell.type === "lab" && batches.length > 0 ? (
+                            // Lab slot without batch assignments: rotate courses so each batch
+                            // covers all lab subjects across the week
+                            (() => {
+                              const slotIdx = labSlotIndexMap?.get(`${day}|${row.label}`) ?? 0;
+                              return (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[9px] font-bold uppercase opacity-50 tracking-wide">Lab Session</span>
+                                    <span className="text-[9px] bg-black/10 rounded px-1 opacity-60">2 hrs</span>
+                                  </div>
+                                  {batches.map((batch, i) => (
+                                    <div key={batch.id} className="rounded border border-current/20 bg-black/5 px-1.5 py-1">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="text-[9px] font-bold bg-black/15 rounded px-1 shrink-0">{batch.name}</span>
+                                        {labCourses.length > 0 && (
+                                          <span className="text-[9px] font-semibold leading-tight opacity-80">
+                                            {labCourses[(i + slotIdx) % labCourses.length]?.course_name}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()
+                          ) : (
+                            // Regular lecture/seminar cell
+                            <>
+                              <p className="font-bold text-[11px]">{cell.courseCode}</p>
+                              <p className="text-[10px] font-medium leading-tight mt-0.5">{cell.courseName}</p>
+                              <p className="text-[9px] opacity-70 mt-1 leading-tight">{cell.facultyName}</p>
+                              {isSpanned && (
+                                <p className="text-[9px] opacity-60 mt-0.5 font-semibold">2 hrs (Lab)</p>
+                              )}
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-[9px] bg-black/10 rounded px-1 py-0.5">{cell.room}</span>
+                                {cell.batchName
+                                  ? <span className="text-[9px] bg-black/15 rounded px-1 py-0.5 font-bold">{cell.batchName}</span>
+                                  : <span className="text-[9px] capitalize">{cell.type}</span>
+                                }
+                              </div>
+                            </>
                           )}
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-[9px] bg-black/10 rounded px-1 py-0.5">{cell.room}</span>
-                            <span className="text-[9px] capitalize">{cell.type}</span>
-                          </div>
                         </div>
                       ) : (
                         <div className="h-full min-h-[60px] flex items-center justify-center">
@@ -209,7 +282,9 @@ function GridTable({ days, rows, data, inline = false }: GridTableProps) {
   );
 }
 
-export default function TimetableGridView({ data }: TimetableGridViewProps) {
+const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+export default function TimetableGridView({ data, batches, labCourses }: TimetableGridViewProps) {
   // Collect slot labels per group
   const weekdayLabels = new Set<string>();
   const saturdayLabels = new Set<string>();
@@ -223,18 +298,83 @@ export default function TimetableGridView({ data }: TimetableGridViewProps) {
   const weekdayRows = buildRows([...weekdayLabels], RECESS_WEEKDAY);
   const saturdayRows = buildRows([...saturdayLabels], RECESS_SATURDAY);
 
+  // Build a map of { "day|slotLabel" → sequential index } for every DISPLAYED fallback lab slot.
+  // A 2-hour lab occupies two consecutive 1-hour rows, but only the first is rendered (the second
+  // is hidden via skipCell / rowSpan). We must skip "second-half" slots so indices are consecutive
+  // (0, 1, 2 …) rather than jumping (0, 2, 4 …) which would break the rotation formula.
+  const labSlotEntries: { key: string; dayOrder: number; startMin: number; endMin: number }[] = [];
+
+  // Helper: parse end-time minutes from a "H:MM AM – H:MM AM" label
+  function endMinutes(label: string): number {
+    const endPart = label.split(" - ")[1]?.trim() ?? "";
+    const [timePart, period] = endPart.split(" ");
+    const [h, m] = timePart.split(":").map(Number);
+    let hour = h;
+    if (period === "PM" && hour !== 12) hour += 12;
+    if (period === "AM" && hour === 12) hour = 0;
+    return hour * 60 + m;
+  }
+
+  for (const day of DAY_ORDER) {
+    const dayData = data[day];
+    if (!dayData) continue;
+    for (const [slotLabel, cell] of Object.entries(dayData)) {
+      if (cell && cell.type === "lab" && (!cell.batchAssignments || cell.batchAssignments.length === 0)) {
+        labSlotEntries.push({
+          key: `${day}|${slotLabel}`,
+          dayOrder: DAY_ORDER.indexOf(day),
+          startMin: parse12hrToMinutes(slotLabel),
+          endMin: endMinutes(slotLabel),
+        });
+      }
+    }
+  }
+  labSlotEntries.sort((a, b) => a.dayOrder - b.dayOrder || a.startMin - b.startMin);
+
+  // Remove "second-half" slots: a slot is a second-half if its startMin equals
+  // the endMin of the immediately preceding slot on the same day.
+  const labSlotIndexMap = new Map<string, number>();
+  let displayedIdx = 0;
+  let prevDayOrder = -1;
+  let prevEndMin = -1;
+  for (const entry of labSlotEntries) {
+    const isSecondHalf =
+      entry.dayOrder === prevDayOrder && entry.startMin === prevEndMin;
+    if (!isSecondHalf) {
+      labSlotIndexMap.set(entry.key, displayedIdx);
+      displayedIdx++;
+    }
+    prevDayOrder = entry.dayOrder;
+    prevEndMin = entry.endMin;
+  }
+
   return (
     <div className="space-y-6">
       {/* Mon–Fri table */}
       {activeDays.length > 0 && (
-        <GridTable days={activeDays} rows={weekdayRows} data={data} />
+        <GridTable
+          days={activeDays}
+          rows={weekdayRows}
+          data={data}
+          batches={batches}
+          labCourses={labCourses}
+          labSlotIndexMap={labSlotIndexMap}
+        />
       )}
 
       {/* Saturday table — only when Saturday has data */}
       {hasSaturday && (
         <div>
           <p className="text-sm font-semibold text-muted-foreground mb-2">Saturday</p>
-          <GridTable days={["Saturday"]} rows={saturdayRows} data={data} inline />
+          <GridTable
+            days={["Saturday"]}
+            rows={saturdayRows}
+            data={data}
+            inline
+            batches={batches}
+            labCourses={labCourses}
+            labSlotIndexMap={labSlotIndexMap}
+          />
         </div>
       )}
     </div>

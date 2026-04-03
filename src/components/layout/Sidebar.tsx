@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, BookOpen, Users, Building2, Clock, CalendarDays,
   BarChart3, LogOut, Menu, X, GraduationCap, Calendar, ChevronRight,
-  User as UserIcon,
+  User as UserIcon, FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Classrooms", href: "/admin/classrooms", icon: <Building2 className="h-4 w-4" /> },
   { label: "Time Slots", href: "/admin/timeslots", icon: <Clock className="h-4 w-4" /> },
   { label: "Timetable", href: "/admin/timetable", icon: <CalendarDays className="h-4 w-4" /> },
+  { label: "Batches", href: "/admin/batches", icon: <FlaskConical className="h-4 w-4" /> },
 ];
 
 const FACULTY_NAV: NavItem[] = [
