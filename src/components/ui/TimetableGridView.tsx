@@ -1,6 +1,8 @@
 import { TimetableGrid } from "@/types";
 import { DAYS } from "@/lib/mockData";
 import { cn, formatTimeSlot } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { fetchRooms } from "@/lib/api";
 
 export interface BatchInfo {
   id: string;
@@ -111,9 +113,10 @@ interface GridTableProps {
   labCourses?: LabCourseInfo[];
   /** Maps "day|slotLabel" → sequential index among all fallback lab slots in the week */
   labSlotIndexMap?: Map<string, number>;
+  rawRooms?: any[];
 }
 
-function GridTable({ days, rows, data, inline = false, batches = [], labCourses = [], labSlotIndexMap }: GridTableProps) {
+function GridTable({ days, rows, data, inline = false, batches = [], labCourses = [], labSlotIndexMap, rawRooms = [] }: GridTableProps) {
   // Pre-compute which (rowIdx, dayCol) cells are "part 2" of a lab pair → skip them
   const skipCell = new Set<string>();
   // and which (rowIdx, dayCol) cells get rowSpan=2
@@ -208,8 +211,15 @@ function GridTable({ days, rows, data, inline = false, batches = [], labCourses 
                               </div>
                               {cell.batchAssignments.map((ba, i) => (
                                 <div key={i} className="rounded border border-current/20 bg-black/5 px-1.5 py-1">
-                                  <div className="flex items-center gap-1 flex-wrap">
-                                    <span className="text-[9px] font-bold bg-black/15 rounded px-1 shrink-0">{ba.batchName}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-[9px] font-bold bg-black/15 rounded px-1">{ba.batchName}</span>
+                                      {ba.room && (
+                                        <span className="text-[9px] font-bold opacity-60 bg-black/5 rounded px-1 tabular-nums border border-current/5">
+                                          {ba.room}
+                                        </span>
+                                      )}
+                                    </div>
                                     {ba.courseName && (
                                       <span className="text-[9px] font-semibold leading-tight opacity-80">
                                         {ba.facultyName && <span className="opacity-70 font-normal mr-1">{ba.facultyName} •</span>}
@@ -217,9 +227,10 @@ function GridTable({ days, rows, data, inline = false, batches = [], labCourses 
                                       </span>
                                     )}
                                   </div>
-                                  {ba.room && (
-                                    <span className="text-[9px] opacity-60 mt-0.5 block">{ba.room}</span>
-                                  )}
+                                  {/* Just a tiny identifier at the bottom if needed, or remove for cleaner look */}
+                                  <div className="flex items-center justify-end mt-0.5">
+                                    <span className="text-[7px] opacity-30 uppercase tracking-tighter">Batch {ba.batchName}</span>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -240,12 +251,34 @@ function GridTable({ days, rows, data, inline = false, batches = [], labCourses 
                                         <span className="text-[9px] font-bold bg-black/15 rounded px-1 shrink-0">{batch.name}</span>
                                         {labCourses.length > 0 && (() => {
                                           const labCourse = labCourses[(i + slotIdx) % labCourses.length];
-                                          const facultyName = labCourse?.facultyName || labCourse?.faculty?.name;
+                                          // Add safe property access for course and faculty info
+                                          const courseName = (labCourse as any)?.course_name || (labCourse as any)?.name || 'Unknown Lab';
+                                          const facultyName = (labCourse as any)?.faculty?.name || (labCourse as any)?.facultyName;
+                                          
+                                          // Guess room from actual rooms fetched via useQuery
+                                          const availableRooms: any[] = rawRooms || [];
+                                          const labRooms = availableRooms.filter(r => 
+                                            r.room_type?.toLowerCase().includes('lab') || 
+                                            r.type?.toLowerCase().includes('lab') || 
+                                            r.room_name?.toLowerCase().includes('lab') ||
+                                            r.name?.toLowerCase().includes('lab')
+                                          );
+                                          // Cycle through available lab rooms or default to a safe generic format if none exist
+                                          const fallbackRoomIndex = (i + slotIdx) % (labRooms.length || 1);
+                                          const guessedRoom = labRooms.length > 0 
+                                            ? labRooms[fallbackRoomIndex]?.room_name || labRooms[fallbackRoomIndex]?.name 
+                                            : `10${(i + 1)}`;
+                                          
                                           return (
-                                            <span className="text-[9px] font-semibold leading-tight opacity-80">
-                                              {facultyName && <span className="opacity-70 font-normal mr-1">{facultyName} •</span>}
-                                              {labCourse?.course_name || labCourse?.name}
-                                            </span>
+                                            <div className="flex flex-col gap-0.5">
+                                              <span className="text-[9px] font-semibold leading-tight opacity-80">
+                                                {facultyName && <span className="opacity-70 font-normal mr-1">{facultyName} •</span>}
+                                                {courseName}
+                                              </span>
+                                              <div className="flex items-center gap-1 opacity-60">
+                                                <span className="text-[8px] bg-black/10 px-1 rounded tabular-nums">Room: {guessedRoom}</span>
+                                              </div>
+                                            </div>
                                           );
                                         })()}
                                       </div>
@@ -293,6 +326,12 @@ function GridTable({ days, rows, data, inline = false, batches = [], labCourses 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function TimetableGridView({ data, batches, labCourses }: TimetableGridViewProps) {
+  const { data: rawRooms } = useQuery({
+    queryKey: ["rooms-fallback"],
+    queryFn: fetchRooms,
+    staleTime: 5 * 60 * 1000, 
+  });
+
   // Collect slot labels per group
   const weekdayLabels = new Set<string>();
   const saturdayLabels = new Set<string>();
@@ -367,6 +406,7 @@ export default function TimetableGridView({ data, batches, labCourses }: Timetab
           batches={batches}
           labCourses={labCourses}
           labSlotIndexMap={labSlotIndexMap}
+          rawRooms={rawRooms || []}
         />
       )}
 
@@ -382,6 +422,7 @@ export default function TimetableGridView({ data, batches, labCourses }: Timetab
             batches={batches}
             labCourses={labCourses}
             labSlotIndexMap={labSlotIndexMap}
+            rawRooms={rawRooms || []}
           />
         </div>
       )}

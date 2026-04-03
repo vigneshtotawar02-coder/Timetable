@@ -79,24 +79,28 @@ class BatchPracticalScheduler {
         const course = this.labCourses[(i + dayIdx) % totalCourses];
         const batch = this.batches[i];
 
-        // Apply exactly the same assignment to ALL time slots that make up this 2-hour block
-        for (const entry of blockEntries) {
-          assignments.push({
-            batch_id: batch.id,
-            course_id: course.id,
-            room_id: roomMap[i] || null,
-            day: entry.day,
-            time_slot: entry.time_slot,
-            week_number: 1, // rotation happens across slots
-            department: batch.department,
-            semester: batch.semester,
-          });
-        }
+        // Apply ONLY to the FIRST time slot of the 2-hour block
+        // This is strictly required because the database has a unique constraint:
+        // "batch_assignments_batch_id_course_id_week_number_key"
+        // meaning a batch cannot have the same course inserted twice in the same week.
+        const entry = blockEntries[0];
+        
+        assignments.push({
+          batch_id: batch.id,
+          course_id: course.id,
+          room_id: roomMap[i] || null,
+          day: entry.day,
+          time_slot: entry.time_slot,
+          week_number: 1, // week 1
+          department: batch.department,
+          semester: batch.semester,
+        });
       }
 
       logger.info(
         `Lab Block on ${day} (${blockEntries.length} slots): ` +
-        `assigned ${N} batches across lab subjects`
+        `assigned ${N} batches across lab subjects. ` +
+        `Rooms: ${Object.entries(roomMap).map(([idx, rid]) => `Batch ${this.batches[idx].name}->RoomID ${rid}`).join(', ')}`
       );
     });
 
@@ -105,25 +109,25 @@ class BatchPracticalScheduler {
 
   /**
    * Assign one distinct room per batch for a given slot.
-   * Returns array[batchIndex] → room_id
+   * Simply fetches all lab rooms, shuffles them, and distributes them to the batches.
    */
   _assignRooms(day, timeSlot, N) {
     const labRooms = this.rooms.filter(r => this._isLabRoom(r));
-    const allRooms = labRooms.length > 0 ? labRooms : this.rooms;
+    const allRooms = this.rooms;
 
-    // Rooms already occupied in this slot by the main timetable
-    const occupiedRooms = new Set(
-      this.existingSchedule
-        .filter(e => e.day === day && String(e.time_slot) === String(timeSlot))
-        .map(e => String(e.room_id))
-    );
-
-    const freeRooms = allRooms.filter(r => !occupiedRooms.has(String(r.id)));
-    const pool = freeRooms.length >= N ? freeRooms : allRooms; // fallback if not enough free
+    // Use lab rooms if we have enough, otherwise use all rooms
+    let pool = labRooms.length >= N ? [...labRooms] : [...allRooms];
+    
+    // Shuffle the pool to get "random" assignments as requested
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
 
     const roomMap = {};
     for (let i = 0; i < N; i++) {
-      roomMap[i] = pool[i % pool.length]?.id || null;
+       // Using pool[i] ensures we get unique rooms as long as we have at least N rooms
+       roomMap[i] = pool[i % pool.length]?.id || null;
     }
     return roomMap;
   }

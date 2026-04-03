@@ -89,18 +89,19 @@ const generateTimetable = asyncHandler(async (req, res, next) => {
   }
 
   // Delete existing timetable for this department and semester
+  const semInt = parseInt(semester);
   await supabase
     .from('timetable')
     .delete()
     .eq('department', department)
-    .eq('semester', semester);
+    .eq('semester', semInt);
 
   // Also clear existing batch assignments for this dept/semester
   await supabase
     .from('batch_assignments')
     .delete()
     .eq('department', department)
-    .eq('semester', semester);
+    .eq('semester', semInt);
 
   // Insert new timetable
   const timetableRecords = generatedTimetable.map(entry => ({
@@ -109,7 +110,7 @@ const generateTimetable = asyncHandler(async (req, res, next) => {
     room_id: entry.room_id,
     day: entry.day,
     time_slot: entry.time_slot,
-    semester,
+    semester: semInt,
     department
   }));
 
@@ -126,19 +127,23 @@ const generateTimetable = asyncHandler(async (req, res, next) => {
   // --- Batch Practical Scheduling ---
   const batchWarnings = [];
   let batchAssignmentCount = 0;
+  const targetSem = parseInt(semester);
+
+  logger.info(`Checking for batches and lab courses for Dept: ${department}, Sem: ${targetSem}`);
 
   const [batchesResult, labCoursesResult] = await Promise.all([
-    supabase.from('batches').select('*').eq('department', department).eq('semester', semester),
+    supabase.from('batches').select('*').eq('department', department).eq('semester', targetSem),
     supabase.from('courses').select('*')
       .eq('department', department)
-      .eq('semester', semester)
-      .in('course_type', ['lab', 'practical'])
+      .eq('semester', targetSem)
+      .in('course_type', ['lab', 'practical', 'Lab', 'Practical'])
   ]);
 
   if (!batchesResult.error && !labCoursesResult.error) {
     const batches = batchesResult.data || [];
-    // lab and practical are the same — treat all as lab courses
     const labCourses = labCoursesResult.data || [];
+    
+    logger.info(`Generation process found: ${batches.length} batches, ${labCourses.length} lab courses`);
 
     if (batches.length > 0 && labCourses.length > 0) {
       const scheduler = new BatchPracticalScheduler(
@@ -153,18 +158,31 @@ const generateTimetable = asyncHandler(async (req, res, next) => {
       batchWarnings.push(...warnings);
 
       if (assignments.length > 0) {
-        const { error: baError } = await supabase.from('batch_assignments').insert(assignments);
+        // Ensure every assignment has the right department and semester
+        const finalAssignments = assignments.map(a => ({
+          ...a,
+          department,
+          semester: targetSem
+        }));
+
+        const { error: baError } = await supabase.from('batch_assignments').insert(finalAssignments);
         if (baError) {
-          logger.error('Error inserting batch assignments:', baError);
-          batchWarnings.push('Failed to save some batch assignments');
+          logger.error('Error inserting batch assignments:', JSON.stringify(baError));
+          batchWarnings.push(`Failed to save batch assignments: ${baError.message}`);
         } else {
-          batchAssignmentCount = assignments.length;
-          logger.info(`Inserted ${assignments.length} batch assignment records`);
+          batchAssignmentCount = finalAssignments.length;
+          logger.info(`Successfully saved ${finalAssignments.length} batch assignment records`);
         }
+      } else {
+        logger.warn('Scheduler returned 0 batch assignments');
       }
-    } else if (batches.length === 0) {
-      batchWarnings.push('No batches defined for this department/semester — skipping batch scheduling');
+    } else {
+      const msg = batches.length === 0 ? 'No batches found' : 'No lab courses found';
+      logger.warn(`${msg} for this dept/sem — skipping batch assignment`);
+      batchWarnings.push(msg);
     }
+  } else {
+    logger.error('DB Error fetching batches/courses:', batchesResult.error || labCoursesResult.error);
   }
 
   logger.info(`Timetable generated successfully for ${department} - Semester ${semester}`);
@@ -217,7 +235,7 @@ const getTimetable = asyncHandler(async (req, res, next) => {
   }
 
   // Fetch batch assignments for this dept/semester
-  const { data: batchAssignments } = await supabase
+  const { data: batchAssignments, error: baErr } = await supabase
     .from('batch_assignments')
     .select(`
       *,
@@ -228,6 +246,10 @@ const getTimetable = asyncHandler(async (req, res, next) => {
     `)
     .eq('department', department)
     .eq('semester', parseInt(semester));
+
+  if (baErr) {
+    logger.error('Error fetching batch assignments:', JSON.stringify(baErr));
+  }
 
   // Also fetch raw timetable rows to get the time_slot FK (not in the view)
   const { data: rawTimetable } = await supabase
@@ -253,6 +275,46 @@ const getTimetable = asyncHandler(async (req, res, next) => {
     (batchAssignments || []).map(ba => `${ba.day}_${ba.time_slot}`)
   );
 
+  // First pass: Group batch assignments logically
+  // Because we only insert batch assignments for the *first* slot of a 2-hour lab block 
+  // (to avoid database unique constraints on batch+course), we must manually spread 
+  // those assignments to the *second* consecutive slot of that lab session here.
+  const slotsByDay = {};
+  viewData.forEach(item => {
+    if (!slotsByDay[item.day]) slotsByDay[item.day] = [];
+    slotsByDay[item.day].push(item);
+  });
+
+  // Spread batch assignments to consecutive same-course lab slots
+  Object.keys(slotsByDay).forEach(day => {
+    // Sort slots logically by start_time. Note: viewData.time_slot_details isn't guaranteed here
+    // but the DB order is usually chronological. We just iterate as provided.
+    let lastLabCourseId = null;
+    let lastBatchAssignments = [];
+
+    slotsByDay[day].forEach(item => {
+      const isLab = ['lab', 'practical', 'Lab', 'Practical'].includes(item.course_type);
+      const slotKey = `${item.day}_${item.time_slot}`;
+      let assignments = batchBySlotWeek1[slotKey] || [];
+
+      if (isLab) {
+        if (assignments.length > 0) {
+          // This is the first slot of the block, save its assignments
+          lastLabCourseId = item.course_id;
+          lastBatchAssignments = assignments;
+        } else if (item.course_id === lastLabCourseId) {
+          // This is the second slot of the block, clone the assignments!
+          batchBySlotWeek1[slotKey] = [...lastBatchAssignments];
+          // Add this slot B to labSlotIds so the deduplication logic properly hides it!
+          labSlotIds.add(slotKey); 
+        }
+      } else {
+        lastLabCourseId = null;
+        lastBatchAssignments = [];
+      }
+    });
+  });
+
   // For lab slots: deduplicate — keep only the first timetable row per (day, time_slot)
   // so the 2-hour block doesn't produce two separate grid entries
   const seenLabSlots = new Set();
@@ -275,7 +337,7 @@ const getTimetable = asyncHandler(async (req, res, next) => {
       courseCode: ba.course?.course_name || '',
       courseName: ba.course?.course_name || '',
       facultyName: ba.course?.faculty?.name || item.faculty_name || '',
-      room: ba.room?.room_name || '',
+      room: ba.room?.room_name || ba.room?.name || '',
     }));
 
     return {
