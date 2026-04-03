@@ -51,43 +51,51 @@ class BatchPracticalScheduler {
       return { assignments, warnings };
     }
 
-    // Deduplicate slots — each unique (day, time_slot) is one practical window
-    const seen = new Set();
-    const uniqueSlots = [];
+    // Group lab timetable entries by day, since the generator creates a contiguous
+    // 2-hour lab block (normally 2 adjacent time slots) for each lab scheduled on a day.
+    const labBlocksByDay = {};
     for (const entry of labEntries) {
-      const key = `${entry.day}_${entry.time_slot}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueSlots.push({ day: entry.day, time_slot: entry.time_slot });
+      if (!labBlocksByDay[entry.day]) {
+        labBlocksByDay[entry.day] = [];
       }
+      labBlocksByDay[entry.day].push(entry);
     }
+
+    const days = Object.keys(labBlocksByDay).sort((a, b) => {
+      const order = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
+      return (order[a] || 99) - (order[b] || 99);
+    });
 
     const totalCourses = this.labCourses.length;
 
-    uniqueSlots.forEach((slot, slotIdx) => {
+    days.forEach((day, dayIdx) => {
+      const blockEntries = labBlocksByDay[day]; // array of time slots for this day's lab block
+
       // Assign rooms — one distinct room per batch
-      const roomMap = this._assignRooms(slot.day, slot.time_slot, N);
+      const roomMap = this._assignRooms(day, blockEntries[0].time_slot, N);
 
       for (let i = 0; i < N; i++) {
-        // Simple shift: batch i gets course (i + slotIdx) % totalCourses
-        // This ensures that across the week's slots, each batch cycles through all lab subjects.
-        const course = this.labCourses[(i + slotIdx) % totalCourses];
+        // Shift course by dayIdx to rotate over the week's lab days
+        const course = this.labCourses[(i + dayIdx) % totalCourses];
         const batch = this.batches[i];
 
-        assignments.push({
-          batch_id: batch.id,
-          course_id: course.id,
-          room_id: roomMap[i] || null,
-          day: slot.day,
-          time_slot: slot.time_slot,
-          week_number: 1, // Only one week needed; rotation happens across slots
-          department: batch.department,
-          semester: batch.semester,
-        });
+        // Apply exactly the same assignment to ALL time slots that make up this 2-hour block
+        for (const entry of blockEntries) {
+          assignments.push({
+            batch_id: batch.id,
+            course_id: course.id,
+            room_id: roomMap[i] || null,
+            day: entry.day,
+            time_slot: entry.time_slot,
+            week_number: 1, // rotation happens across slots
+            department: batch.department,
+            semester: batch.semester,
+          });
+        }
       }
 
       logger.info(
-        `Slot ${slot.day}/${slot.time_slot}: ` +
+        `Lab Block on ${day} (${blockEntries.length} slots): ` +
         `assigned ${N} batches across lab subjects`
       );
     });

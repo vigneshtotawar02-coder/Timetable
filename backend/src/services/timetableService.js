@@ -86,11 +86,10 @@ class TimetableService {
 
       let classesNeeded;
       if (isLab) {
-        // Each lab course gets one 2-hour block per day it can be scheduled.
-        // weekly_hours / 2 gives how many 2-hour blocks are needed per week.
-        // Cap at numWorkingDays so we don't try to schedule more days than exist.
-        const blocksNeeded = Math.max(1, Math.round(weeklyHours / 2));
-        classesNeeded = Math.min(blocksNeeded, numWorkingDays);
+        // Enforce exactly one 2-hour lab session PER lab course over the week.
+        // This ensures the total number of lab sessions in the week exactly matches
+        // the number of lab courses, allowing batches to cycle through all of them exactly once.
+        classesNeeded = 1;
       } else {
         classesNeeded = weeklyHours;
       }
@@ -105,6 +104,10 @@ class TimetableService {
 
     // Schedule lab courses FIRST so they claim days before regular courses fill slots
     requirements.sort((a, b) => (b.isLab ? 1 : 0) - (a.isLab ? 1 : 0));
+
+    const labCount = requirements.filter(r => r.isLab).length;
+    const lectureCount = requirements.length - labCount;
+    logger.info(`Ordering configuration: Generating ${labCount} Lab sessions first, followed by ${lectureCount} Lecture sessions.`);
 
     return requirements;
   }
@@ -194,8 +197,8 @@ class TimetableService {
     for (const [day, daySlots] of slotsByDay) {
       // Skip: this course already has a lab block on this day
       if (daysWithLabBlock.has(day)) continue;
-      // Skip: another lab is already scheduled on this day (global 1-lab/day rule)
-      if (this.labDaySchedule.has(day)) continue;
+      // Removed strict global 1-lab/day filter to allow the fallback logic
+      // below to work if we run out of unique days.
 
       for (let i = 0; i < daySlots.length - 1; i++) {
         const slotA = daySlots[i];
