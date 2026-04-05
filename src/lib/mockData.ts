@@ -81,5 +81,5 @@ export const ROOM_UTILIZATION_DATA: RoomUtilizationData[] = [
   { name: "Seminar-01", value: 40, fill: "hsl(142, 72%, 36%)" },
 ];
 
-export const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Electrical"];
+export const DEPARTMENTS = ["Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil", "Electrical"];
 export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
