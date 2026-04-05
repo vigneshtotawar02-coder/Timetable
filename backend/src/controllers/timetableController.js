@@ -120,7 +120,7 @@ const generateTimetable = asyncHandler(async (req, res, next) => {
     .select();
 
   if (insertError) {
-    logger.error('Error inserting timetable:', insertError);
+    logger.error('Error inserting timetable:', JSON.stringify(insertError));
     return next(new AppError('Failed to save timetable', 500));
   }
 
@@ -345,7 +345,7 @@ const getTimetable = asyncHandler(async (req, res, next) => {
       day: item.day,
       semester: item.semester,
       department: item.department,
-      course: { course_name: item.course_name },
+      course: { course_name: item.course_name, course_type: item.course_type },
       faculty: { name: item.faculty_name, email: item.faculty_email },
       room: { room_name: item.room_name, capacity: item.capacity },
       time_slot_details: {

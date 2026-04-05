@@ -195,20 +195,22 @@ export default function Courses() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Faculty</Label>
-                  <Select value={form.facultyId} onValueChange={(v) => setForm({ ...form, facultyId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select faculty (optional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {faculty.map((f: any) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.name} ({f.department})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {form.courseType !== "seminar" && (
+                  <div className="space-y-1">
+                    <Label>Faculty</Label>
+                    <Select value={form.facultyId} onValueChange={(v) => setForm({ ...form, facultyId: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select faculty (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {faculty.map((f: any) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name} ({f.department})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label>Hours/Week *</Label>
                   <Input type="number" min="1" max="10" value={form.hoursPerWeek} onChange={(e) => setForm({ ...form, hoursPerWeek: e.target.value })} />
@@ -217,7 +219,7 @@ export default function Courses() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Course Type</Label>
-                  <Select value={form.courseType} onValueChange={(v) => setForm({ ...form, courseType: v })}>
+                  <Select value={form.courseType} onValueChange={(v) => setForm({ ...form, courseType: v, facultyId: v === "seminar" ? "unassigned" : form.facultyId })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="lecture">Lecture</SelectItem>

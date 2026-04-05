@@ -269,21 +269,25 @@ class TimetableService {
     // Constraint 0: Room must be a lab room
     if (!this.isLabRoom(room)) return false;
 
-    // Constraint 1: Check faculty availability
-    const availKey = `${facultyId}_${day}_${slotId}`;
-    if (!this.facultyAvailabilityIndex.get(availKey)) {
-      const hasAvailabilityData = Array.from(this.facultyAvailabilityIndex.keys())
-        .some(key => key.startsWith(`${facultyId}_`));
-      if (hasAvailabilityData && !this.facultyAvailabilityIndex.get(availKey)) {
-        return false;
+    // Constraint 1: Check faculty availability (skip if no faculty)
+    if (facultyId) {
+      const availKey = `${facultyId}_${day}_${slotId}`;
+      if (!this.facultyAvailabilityIndex.get(availKey)) {
+        const hasAvailabilityData = Array.from(this.facultyAvailabilityIndex.keys())
+          .some(key => key.startsWith(`${facultyId}_`));
+        if (hasAvailabilityData && !this.facultyAvailabilityIndex.get(availKey)) {
+          return false;
+        }
       }
     }
 
-    // Constraint 2: No overlapping classes for faculty
-    if (!this.facultySchedule.has(facultyId)) {
-      this.facultySchedule.set(facultyId, new Set());
+    // Constraint 2: No overlapping classes for faculty (skip if no faculty)
+    if (facultyId) {
+      if (!this.facultySchedule.has(facultyId)) {
+        this.facultySchedule.set(facultyId, new Set());
+      }
+      if (this.facultySchedule.get(facultyId).has(`${day}_${slotId}`)) return false;
     }
-    if (this.facultySchedule.get(facultyId).has(`${day}_${slotId}`)) return false;
 
     // Constraint 3: No double booking of rooms
     if (!this.roomSchedule.has(roomId)) {
@@ -370,30 +374,32 @@ class TimetableService {
     const slotId = timeSlot.id;
 
     // Constraint 0: Room type must match course type
-    // Lab/practical courses must go in lab rooms; lecture courses must go in non-lab rooms
     const needsLab = this.courseNeedsLab(course);
     const roomIsLab = this.isLabRoom(room);
     if (needsLab && !roomIsLab) return false;
     if (!needsLab && roomIsLab) return false;
     
-    // Constraint 1: Check faculty availability
-    const availKey = `${facultyId}_${day}_${slotId}`;
-    if (!this.facultyAvailabilityIndex.get(availKey)) {
-      const hasAvailabilityData = Array.from(this.facultyAvailabilityIndex.keys())
-        .some(key => key.startsWith(`${facultyId}_`));
-      
-      if (hasAvailabilityData && !this.facultyAvailabilityIndex.get(availKey)) {
-        return false; // Faculty has availability data but not available at this time
+    // Constraint 1: Check faculty availability (skip if no faculty assigned)
+    if (facultyId) {
+      const availKey = `${facultyId}_${day}_${slotId}`;
+      if (!this.facultyAvailabilityIndex.get(availKey)) {
+        const hasAvailabilityData = Array.from(this.facultyAvailabilityIndex.keys())
+          .some(key => key.startsWith(`${facultyId}_`));
+        if (hasAvailabilityData && !this.facultyAvailabilityIndex.get(availKey)) {
+          return false;
+        }
       }
     }
     
-    // Constraint 2: No overlapping classes for faculty
-    if (!this.facultySchedule.has(facultyId)) {
-      this.facultySchedule.set(facultyId, new Set());
-    }
-    const facultySlotKey = `${day}_${slotId}`;
-    if (this.facultySchedule.get(facultyId).has(facultySlotKey)) {
-      return false;
+    // Constraint 2: No overlapping classes for faculty (skip if no faculty)
+    if (facultyId) {
+      if (!this.facultySchedule.has(facultyId)) {
+        this.facultySchedule.set(facultyId, new Set());
+      }
+      const facultySlotKey = `${day}_${slotId}`;
+      if (this.facultySchedule.get(facultyId).has(facultySlotKey)) {
+        return false;
+      }
     }
     
     // Constraint 3: No double booking of rooms
@@ -416,7 +422,7 @@ class TimetableService {
     // Constraint 5: Try to distribute classes throughout the week
     const sameDay = existingAssignments.filter(a => a.day === day).length;
     if (sameDay >= 2) {
-      return false; // Max 2 classes per day for same course
+      return false;
     }
     
     return true;
@@ -455,8 +461,10 @@ class TimetableService {
     
     // Check faculty workload balance
     const facultyId = course.faculty_id;
-    const currentWorkload = this.courseSchedule.get(facultyId) || 0;
-    score -= currentWorkload * 5; // Penalty for overloading faculty
+    if (facultyId) {
+      const currentWorkload = this.courseSchedule.get(facultyId) || 0;
+      score -= currentWorkload * 5;
+    }
     
     return score;
   }
@@ -495,21 +503,21 @@ class TimetableService {
     
     const { faculty_id, room_id, day, time_slot } = assignment;
     
-    // Update faculty schedule
-    if (!this.facultySchedule.has(faculty_id)) {
-      this.facultySchedule.set(faculty_id, new Set());
+    // Update faculty schedule (skip if no faculty)
+    if (faculty_id) {
+      if (!this.facultySchedule.has(faculty_id)) {
+        this.facultySchedule.set(faculty_id, new Set());
+      }
+      this.facultySchedule.get(faculty_id).add(`${day}_${time_slot}`);
+      const currentCount = this.courseSchedule.get(faculty_id) || 0;
+      this.courseSchedule.set(faculty_id, currentCount + 1);
     }
-    this.facultySchedule.get(faculty_id).add(`${day}_${time_slot}`);
     
     // Update room schedule
     if (!this.roomSchedule.has(room_id)) {
       this.roomSchedule.set(room_id, new Set());
     }
     this.roomSchedule.get(room_id).add(`${day}_${time_slot}`);
-    
-    // Update course schedule count
-    const currentCount = this.courseSchedule.get(faculty_id) || 0;
-    this.courseSchedule.set(faculty_id, currentCount + 1);
   }
 
   /**
@@ -517,7 +525,6 @@ class TimetableService {
    */
   rollbackAssignments(assignments) {
     assignments.forEach(assignment => {
-      // Remove from schedule
       const index = this.schedule.findIndex(s => 
         s.course_id === assignment.course_id &&
         s.day === assignment.day &&
@@ -529,19 +536,17 @@ class TimetableService {
       
       const { faculty_id, room_id, day, time_slot } = assignment;
       
-      // Update faculty schedule
-      if (this.facultySchedule.has(faculty_id)) {
-        this.facultySchedule.get(faculty_id).delete(`${day}_${time_slot}`);
+      if (faculty_id) {
+        if (this.facultySchedule.has(faculty_id)) {
+          this.facultySchedule.get(faculty_id).delete(`${day}_${time_slot}`);
+        }
+        const currentCount = this.courseSchedule.get(faculty_id) || 0;
+        this.courseSchedule.set(faculty_id, Math.max(0, currentCount - 1));
       }
       
-      // Update room schedule
       if (this.roomSchedule.has(room_id)) {
         this.roomSchedule.get(room_id).delete(`${day}_${time_slot}`);
       }
-      
-      // Update course schedule count
-      const currentCount = this.courseSchedule.get(faculty_id) || 0;
-      this.courseSchedule.set(faculty_id, Math.max(0, currentCount - 1));
     });
   }
 }

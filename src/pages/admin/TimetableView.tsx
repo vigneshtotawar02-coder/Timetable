@@ -49,13 +49,15 @@ export default function TimetableView() {
         if (!grid[day]) grid[day] = {};
         const courseName = row.course?.course_name || "";
         const roomName = row.room?.room_name || "";
-        const isLab = !!(row.batchAssignments?.length) || /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
+        const courseType = row.course?.course_type || "";
+        const isLab = !!(row.batchAssignments?.length) || courseType === "lab" || /lab|practical|workshop/i.test(courseName) || /lab/i.test(roomName);
+        const isSeminar = courseType === "seminar";
         grid[day][slotLabel] = {
           courseCode: courseName || String(row.course_id),
           courseName,
           facultyName: row.faculty?.name,
           room: roomName,
-          type: isLab ? "lab" : "lecture",
+          type: isSeminar ? "seminar" : isLab ? "lab" : "lecture",
           batchAssignments: row.batchAssignments,
         };
       });

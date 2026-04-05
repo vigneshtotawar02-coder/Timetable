@@ -17,7 +17,7 @@ const courseValidation = [
   body('course_name').notEmpty().withMessage('Course name is required'),
   body('department').notEmpty().withMessage('Department is required'),
   body('semester').isInt({ min: 1, max: 8 }).withMessage('Semester must be between 1 and 8'),
-  body('faculty_id').isUUID().withMessage('Valid faculty ID is required'),
+  body('faculty_id').optional({ nullable: true }).isUUID().withMessage('Valid faculty ID is required'),
   body('weekly_hours').isInt({ min: 1, max: 10 }).withMessage('Weekly hours must be between 1 and 10')
 ];
 
