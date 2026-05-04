@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDepartmentTimetable, fetchBatches, fetchLabCourses } from "@/lib/api";
 import { TimetableGrid } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { createTimeSlotLabel } from "@/lib/utils";
+import { createTimeSlotLabel, getSemesterLabel } from "@/lib/utils";
 
 export default function StudentDashboard() {
   const { user, updateUser } = useAuth();
@@ -113,7 +113,7 @@ export default function StudentDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-white">Hi, {user?.name?.split(" ")[0]} 👋</h1>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-white/70 text-sm">{user?.department} · Semester {user?.semester} · Spring 2025</p>
+              <p className="text-white/70 text-sm">{user?.department} · {getSemesterLabel(user?.semester ?? 0)} · Spring 2025</p>
             </div>
           </div>
           <Button onClick={handleDownload} className="bg-teal hover:bg-teal-light text-white border-0">
@@ -131,7 +131,7 @@ export default function StudentDashboard() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {[1,2,3,4,5,6,7,8].map((s) => (
-                  <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>
+                  <SelectItem key={s} value={String(s)}>{getSemesterLabel(s)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -170,7 +170,7 @@ export default function StudentDashboard() {
           <Select value={sem} onValueChange={setSem}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {user?.semester && <SelectItem value={String(user.semester)}>Sem {user.semester}</SelectItem>}
+              {user?.semester && <SelectItem value={String(user.semester)}>{getSemesterLabel(user.semester)}</SelectItem>}
             </SelectContent>
           </Select>
           <button
@@ -191,7 +191,7 @@ export default function StudentDashboard() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-semibold text-foreground">Class Schedule</h3>
-            <p className="text-xs text-muted-foreground">{dept} · Semester {sem}</p>
+            <p className="text-xs text-muted-foreground">{dept} · {getSemesterLabel(Number(sem))}</p>
           </div>
           <Button 
             variant="outline" 

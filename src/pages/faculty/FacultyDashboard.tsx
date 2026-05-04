@@ -7,7 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useQuery } from "@tanstack/react-query";
 import { fetchFacultyTimetable, fetchCourses } from "@/lib/api";
 import { TimetableGrid } from "@/types";
-import { createTimeSlotLabel } from "@/lib/utils";
+import { createTimeSlotLabel, getSemesterLabel } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -176,7 +176,7 @@ export default function FacultyDashboard() {
                       </div>
                       <p className="text-sm font-medium text-foreground">{course.course_name}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Sem {course.semester} · {course.department}
+                        {getSemesterLabel(course.semester)} · {course.department}
                       </p>
                       {slots.length > 0 && (
                         <div className="mt-2 space-y-1">

@@ -9,6 +9,7 @@ import { Calendar, Loader2, ArrowLeft } from "lucide-react";
 import { DEPARTMENTS } from "@/lib/mockData";
 import { UserRole } from "@/types";
 import { registerApi } from "@/lib/api";
+import { getSemesterLabel } from "@/lib/utils";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -135,7 +136,7 @@ export default function Register() {
                   <Select value={form.semester} onValueChange={(v) => setForm({ ...form, semester: v })}>
                     <SelectTrigger><SelectValue placeholder="Semester" /></SelectTrigger>
                     <SelectContent>
-                      {[1,2,3,4,5,6,7,8].map((s) => <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>)}
+                      {[1,2,3,4,5,6,7,8].map((s) => <SelectItem key={s} value={String(s)}>{getSemesterLabel(s)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

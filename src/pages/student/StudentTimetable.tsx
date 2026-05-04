@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDepartmentTimetable, fetchBatches, fetchLabCourses } from "@/lib/api";
 import { TimetableGrid } from "@/types";
 import { toast } from "@/hooks/use-toast";
-import { createTimeSlotLabel } from "@/lib/utils";
+import { createTimeSlotLabel, getSemesterLabel } from "@/lib/utils";
 
 export default function StudentTimetable() {
   const { user } = useAuth();
@@ -119,7 +119,7 @@ export default function StudentTimetable() {
               My Class Schedule
             </h1>
             <p className="text-white/80 text-sm mt-2">
-              {department} · Semester {semester} · Academic Year 2024-25
+              {department} · {getSemesterLabel(Number(semester))} · Academic Year 2024-25
               {batchId && <Badge className="ml-2 bg-white/20 text-white border-white/30 text-xs">Batch assigned</Badge>}
             </p>
           </div>
@@ -214,7 +214,7 @@ export default function StudentTimetable() {
             <div>
               <CardTitle>Weekly Schedule</CardTitle>
               <CardDescription>
-                Your complete class timetable for {department}, Semester {semester}
+                Your complete class timetable for {department}, {getSemesterLabel(Number(semester))}
               </CardDescription>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function StudentTimetable() {
                 <Calendar className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="font-medium text-muted-foreground mb-2">No Timetable Available</p>
                 <p className="text-sm text-muted-foreground">
-                  The timetable for {department}, Semester {semester} hasn't been generated yet.
+                  The timetable for {department}, {getSemesterLabel(Number(semester))} hasn't been generated yet.
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Please contact your administrator.

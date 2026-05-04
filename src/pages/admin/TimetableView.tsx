@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TimetableGrid } from "@/types";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { createTimeSlotLabel } from "@/lib/utils";
+import { createTimeSlotLabel, getSemesterLabel } from "@/lib/utils";
 
 export default function TimetableView() {
   const [dept, setDept] = useState("Computer Science");
@@ -82,7 +82,7 @@ export default function TimetableView() {
     mutationFn: () => generateDepartmentTimetable(dept, Number(sem)),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["timetable", dept, sem] });
-      toast({ title: "Timetable Generated!", description: `${dept} - Semester ${sem} schedule is ready.` });
+      toast({ title: "Timetable Generated!", description: `${dept} - ${getSemesterLabel(Number(sem))} schedule is ready.` });
     },
     onError: () => {
       toast({
@@ -176,7 +176,7 @@ export default function TimetableView() {
           <label className="text-sm font-medium text-muted-foreground">Semester:</label>
           <Select value={sem} onValueChange={setSem}>
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>{SEMESTERS.map((s) => <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>)}</SelectContent>
+            <SelectContent>{SEMESTERS.map((s) => <SelectItem key={s} value={String(s)}>{getSemesterLabel(s)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="flex gap-2 ml-auto flex-wrap">
@@ -206,7 +206,7 @@ export default function TimetableView() {
         <div className="animate-fade-in" ref={timetableRef}>
           <div className="flex items-center gap-2 mb-3">
             <Badge className="bg-primary/10 text-primary border-primary/20">{dept}</Badge>
-            <Badge variant="outline">Semester {sem}</Badge>
+            <Badge variant="outline">{getSemesterLabel(Number(sem))}</Badge>
           </div>
           <TimetableGridView
             data={timetableQuery.data}

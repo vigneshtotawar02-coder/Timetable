@@ -3,6 +3,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchBatches, createBatch, updateBatch, deleteBatch } from "@/lib/api";
 import { DEPARTMENTS, SEMESTERS } from "@/lib/mockData";
+import { getSemesterLabel } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -108,7 +109,7 @@ export default function BatchManagement() {
               <Select value={sem} onValueChange={setSem}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {SEMESTERS.map(s => <SelectItem key={s} value={String(s)}>Semester {s}</SelectItem>)}
+                  {SEMESTERS.map(s => <SelectItem key={s} value={String(s)}>{getSemesterLabel(s)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -152,7 +153,7 @@ export default function BatchManagement() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">
-              Batches — {dept}, Semester {sem}
+              Batches — {dept}, {getSemesterLabel(Number(sem))}
             </CardTitle>
             <Badge variant="outline">{batches.length} batch{batches.length !== 1 ? "es" : ""}</Badge>
           </div>

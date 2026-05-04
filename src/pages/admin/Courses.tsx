@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchCourses, createCourse, updateCourse, deleteCourse, fetchFaculty } from "@/lib/api";
 import { DEPARTMENTS } from "@/lib/mockData";
+import { getSemesterLabel } from "@/lib/utils";
 
 export default function Courses() {
   const queryClient = useQueryClient();
@@ -189,7 +190,7 @@ export default function Courses() {
                   <Select value={form.semester} onValueChange={(v) => setForm({ ...form, semester: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {[1,2,3,4,5,6,7,8].map((s) => <SelectItem key={s} value={String(s)}>Sem {s}</SelectItem>)}
+                      {[1,2,3,4,5,6,7,8].map((s) => <SelectItem key={s} value={String(s)}>{getSemesterLabel(s)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -288,7 +289,7 @@ export default function Courses() {
                   <td className="p-4 text-muted-foreground hidden md:table-cell">
                     <Badge variant="secondary">{course.department}</Badge>
                   </td>
-                  <td className="p-4 text-muted-foreground hidden sm:table-cell">Sem {course.semester}</td>
+                  <td className="p-4 text-muted-foreground hidden sm:table-cell">{getSemesterLabel(course.semester)}</td>
                   <td className="p-4 text-muted-foreground hidden lg:table-cell">{course.facultyName || "—"}</td>
                   <td className="p-4 hidden lg:table-cell">
                     {(course as any).courseType && (course as any).courseType !== "lecture" ? (

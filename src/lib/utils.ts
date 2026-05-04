@@ -25,3 +25,26 @@ export function formatTimeSlot(time: string): string {
 export function createTimeSlotLabel(startTime: string, endTime: string): string {
   return `${formatTimeSlot(startTime)} - ${formatTimeSlot(endTime)}`;
 }
+
+/**
+ * Returns the display label for a semester number.
+ * Semesters 3-8 are mapped to their renamed labels:
+ *   3 → Sem 4 (A), 4 → Sem 4 (B)
+ *   5 → Sem 6 (A), 6 → Sem 6 (B)
+ *   7 → Sem 8 (A), 8 → Sem 8 (B)
+ * Semesters 1-2 display as "Sem 1" / "Sem 2".
+ */
+const SEMESTER_LABELS: Record<number, string> = {
+  1: "Sem 1",
+  2: "Sem 2",
+  3: "Sem 4 (A)",
+  4: "Sem 4 (B)",
+  5: "Sem 6 (A)",
+  6: "Sem 6 (B)",
+  7: "Sem 8 (A)",
+  8: "Sem 8 (B)",
+};
+
+export function getSemesterLabel(semester: number): string {
+  return SEMESTER_LABELS[semester] ?? `Sem ${semester}`;
+}
